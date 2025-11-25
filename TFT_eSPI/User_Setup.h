@@ -9,8 +9,12 @@
   FULL INSTRUCTIONS AVAILABLE ON HOW CONFIGURE THE LIBRARY: https://RandomNerdTutorials.com/cyd/ or https://RandomNerdTutorials.com/esp32-tft/
 */
 
-//#define ESP32_2432S028
+// Uncomment one of the following
+#define ESP32_2432S028
 //#define ESP32_2432S024
+
+// Uncomment for ST7789 display
+//#define ST7789_LCD
 
 //                            USER DEFINED SETTINGS
 //   Set driver type, fonts to be loaded, pins used and SPI control method etc
