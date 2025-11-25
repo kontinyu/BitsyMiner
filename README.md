@@ -76,7 +76,7 @@ https://github.com/PaulStoffregen/XPT2046_Touchscreen
 <br/><br/>
 ## Support
 
-The binaries and code are offered as-is. No support or guarantee of any kind is available for the BitsyMiner Open Source.
+The binaries and code are offered as-is. No support or guarantee of any kind is available for BitsyMiner Open Source.
 
 
 
