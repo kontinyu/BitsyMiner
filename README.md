@@ -2,6 +2,9 @@
 
 BitsyMiner is a Bitcoin lottery miner application designed to run on ESP32 microcontroller devices.
 
+![Image of BitsyMiner Screen](/assets/bitsy_image.jpg)
+
+<br/><br/>
 ### Required Hardware
 
 BitsyMiner was first programmed to run specifically on "Cheap Yellow Display" boards with 2.8" ILI9341 displays. I have since gotten it working on ST7789 displays, as well as the 2.4" ILI9341 boards, which have a slightly different pin configuration.
@@ -10,6 +13,8 @@ You can also compile and run the code in headless mode (no display), which shoul
 
 The current code includes inline assembly that is very hardware-dependent and is not compatible with other board types.
 
+
+<br/><br/>
 ### Installation
 
 **Option 1:** Compile from Source
@@ -20,14 +25,19 @@ Set up your environment by installing all of the required libraries in the Ardui
 
 I have included a few binaries in the "binaries" folder. I may provide a loader at some point, but for the time being, navigate to the [binaries](binaries) folder and follow the instructions there.
 
+After installing, you can follow the setup video [here](https://www.youtube.com/watch?v=Ur3amBXdaBI).
 
+<br/><br/>
 ### Programming Environment
 
 BitsyMiner started as a personal project to learn more about Bitcoin mining. For simplicity's sake, I began working in the [Arduino IDE](https://www.arduino.cc/en/software/), and I never left it.
 
 I use version 2.0.17 of the Arduino Core for esp32 boards. I ran into odd problems when trying to upgrade, so I just stuck with it.
 
+
+<br/><br/>
 ### Required Libraries
+
 ArduinoJson
 Copyright © 2014-2024, Benoit BLANCHON
 MIT License
@@ -62,11 +72,15 @@ Paul Stoffregen
 No license defined (Public Domain)
 https://github.com/PaulStoffregen/XPT2046_Touchscreen    
 
+
+<br/><br/>
 ## Support
 
 The binaries and code are offered as-is. No support or guarantee of any kind is available for the BitsyMiner Open Source.
 
 
+
+<br/><br/>
 ## License
 
 BitsyMiner Open Source is licensed under the GNU General Public License v3.0 (GPL-3.0).
