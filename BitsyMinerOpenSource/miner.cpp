@@ -41,8 +41,6 @@ unsigned char blockTarget[32];
 double poolDifficulty = 1.0;
 unsigned char poolTarget[32];
 
-volatile int8_t minersRunning = 0;
-
 size_t extraNonce2Size = 0;
 unsigned long extraNonce2 = 1;
 
@@ -53,6 +51,8 @@ unsigned long startNonce[2] = {0, 0x80000000};
 volatile bool isMining = false;
 char currentJobId[MAX_JOB_ID_LENGTH];
 
+volatile bool core0Mining = false;
+volatile bool core1Mining = false;
 
 extern MonitorData monitorData;
 
@@ -296,7 +296,7 @@ void startMiningJob(stratum_block* sb) {
   char buffer[65];
   unsigned char coinbaseHash[32];
 
-  while( isMining && minersRunning) {
+  while( isMining || core0Mining || core1Mining ) {
     isMining = false;
     vTaskDelay(10/portTICK_PERIOD_MS);    
   }
@@ -441,7 +441,7 @@ void minerTask(void *task_id) {
         continue;
       }
 
-      minersRunning++;
+      core0Mining = true;
 
       // For now, use the block difficulty
       memcpy(&hb, &pendingMiningJobBlock, sizeof(hash_block)); 
@@ -462,11 +462,10 @@ void minerTask(void *task_id) {
         yieldCounter++;
         if( yieldCounter & 0xff == 0 ){
           taskYIELD();
-          //yieldCounter = CORE_0_YIELD_COUNT;
         }      
                
         if( sha256header(&midstate, &ctx, &hb) ) {
-          hashCheck(jobId, &ctx, hb.timestamp, hb.nonce - 1);     
+          hashCheck(jobId, &ctx, hb.timestamp, hb.nonce);     
         }
 
         hb.nonce += 1;        
@@ -474,7 +473,7 @@ void minerTask(void *task_id) {
         
       } // isMining
 
-      minersRunning--;
+      core0Mining = false;
       
     } // while isMining
  
@@ -519,7 +518,7 @@ void IRAM_ATTR miner1Task(void *task_id) {
     dbg("Miner Task 2: %s\n", jobId);
 
 
-    minersRunning++;
+    core1Mining = true;
 
     // Swap all the bytes we can up front instead of every time
     uint32_t* data = (uint32_t*) &hb;
@@ -736,7 +735,7 @@ void IRAM_ATTR miner1Task(void *task_id) {
       }
       
     }
-    minersRunning--;
+    core1Mining = false;
     
     // Leave this delay in case we're not mining
     vTaskDelay(20 / portTICK_PERIOD_MS);
