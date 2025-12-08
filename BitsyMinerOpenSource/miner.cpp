@@ -535,7 +535,7 @@ void IRAM_ATTR miner1Task(void *task_id) {
 
       // Assumes sha_base, data, internalHashes, hashBlock1, hb.nonce are 4-byte aligned.
 
-      __asm__ __volatile__(
+        __asm__ __volatile__(
 
         "l32i.n   a2,  %[nonce], 0 \n" /* Store nonce in a register */
 
@@ -543,68 +543,64 @@ void IRAM_ATTR miner1Task(void *task_id) {
         "movi     a7, 0x80 \n"
         "slli     a7, a7, 24 \n"  /* Terminating bit */
 
+        "addi     a5,  %[sb], 0x90 \n" /* a5 = sb_ctl = sb + 0x90 */
 
       "proc_start: \n"
 
         /* Move data from hash block into SHA registers */
-        "l32i.n    a3,  %[IN],   0 \n"
+        "l32i.n    a3,  %[IN],  0 \n"
         "s32i.n    a3,  %[sb],  0 \n"
-        "l32i.n    a3,  %[IN],   4 \n"
+        "l32i.n    a3,  %[IN],  4 \n"
         "s32i.n    a3,  %[sb],  4 \n"
 
-        "l32i.n    a3,  %[IN],   8 \n"
+        "l32i.n    a3,  %[IN],  8 \n"
         "s32i.n    a3,  %[sb],  8 \n"        
         "l32i.n    a3,  %[IN],  12 \n"
-        "s32i.n    a3,  %[sb], 12 \n"
+        "s32i.n    a3,  %[sb],  12 \n"
 
         "l32i.n    a3,  %[IN],  16 \n"
-        "s32i.n    a3,  %[sb], 16 \n"        
+        "s32i.n    a3,  %[sb],  16 \n"        
         "l32i.n    a3,  %[IN],  20 \n"
-        "s32i.n    a3,  %[sb], 20 \n"
+        "s32i.n    a3,  %[sb],  20 \n"
 
         "l32i.n    a3,  %[IN],  24 \n"
-        "s32i.n    a3,  %[sb], 24 \n"        
+        "s32i.n    a3,  %[sb],  24 \n"        
         "l32i.n    a3,  %[IN],  28 \n"
-        "s32i.n    a3,  %[sb], 28 \n"
+        "s32i.n    a3,  %[sb],  28 \n"
 
         "l32i.n    a3,  %[IN],  32 \n"
-        "s32i.n    a3,  %[sb], 32 \n"
+        "s32i.n    a3,  %[sb],  32 \n"
         "l32i.n    a3,  %[IN],  36 \n"
-        "s32i.n    a3,  %[sb], 36 \n"
+        "s32i.n    a3,  %[sb],  36 \n"
 
         "l32i.n    a3,  %[IN],  40 \n"
-        "s32i.n    a3,  %[sb], 40 \n"        
+        "s32i.n    a3,  %[sb],  40 \n"        
         "l32i.n    a3,  %[IN],  44 \n"
-        "s32i.n    a3,  %[sb], 44 \n"
+        "s32i.n    a3,  %[sb],  44 \n"
 
         "l32i.n    a3,  %[IN],  48 \n"
-        "s32i.n    a3,  %[sb], 48 \n"        
+        "s32i.n    a3,  %[sb],  48 \n"        
         "l32i.n    a3,  %[IN],  52 \n"
-        "s32i.n    a3,  %[sb], 52 \n"
+        "s32i.n    a3,  %[sb],  52 \n"
 
         "l32i.n    a3,  %[IN],  56 \n"
-        "s32i.n    a3,  %[sb], 56 \n"        
+        "s32i.n    a3,  %[sb],  56 \n"        
         "l32i.n    a3,  %[IN],  60 \n"
-        "s32i.n    a3,  %[sb], 60 \n"
+        "s32i.n    a3,  %[sb],  60 \n"
 
         /* 1) start SHA */
         "movi.n  a3, 1\n"
-        "s32i    a3, %[sb], 0x90\n"
+        "s32i.n  a3, a5, 0\n" /* 0x90 */
 
         "memw   \n" // Publish change
 
-      "1:\n"
-        /* 3) busy-wait */
-        "l32i    a3, %[sb], 0x9C\n"
-        "bnez    a3, 1b\n"
-
-        /* --------  0 … 7  ---------- */
-        "l32i.n    a3,  %[IN],   64 \n"
-        "s32i.n    a3,  %[sb],  0 \n"
-        "l32i.n    a3,  %[IN],   68 \n"
-        "s32i.n    a3,  %[sb],  4 \n"
-        "l32i.n    a3,  %[IN],   72 \n"
-        "s32i.n    a3,  %[sb],  8 \n"
+        /* Start preparing next block */
+        "l32i    a3,  %[IN],   64 \n"
+        "s32i.n  a3,  %[sb],    0 \n"
+        "l32i    a3,  %[IN],   68 \n"
+        "s32i.n  a3,  %[sb],    4 \n"
+        "l32i    a3,  %[IN],   72 \n"
+        "s32i.n  a3,  %[sb],    8 \n"
 
         "s32i.n    a2, %[sb], 12 \n" /* Nonce */
         "s32i.n    a7, %[sb], 16 \n" /* Termininating bit */
@@ -613,39 +609,40 @@ void IRAM_ATTR miner1Task(void *task_id) {
         // Zero sb[20..56]
         "movi.n  a4,  0            \n" 
 
-        "s32i.n   a4,  %[sb], 20   \n"
-        "s32i.n   a4,  %[sb], 24   \n"
-        "s32i.n   a4,  %[sb], 28   \n"
-        "s32i.n   a4,  %[sb], 32   \n"
-        "s32i.n   a4,  %[sb], 36   \n"
-        "s32i.n   a4,  %[sb], 40   \n"
-        "s32i.n   a4,  %[sb], 44   \n"
-        "s32i.n   a4,  %[sb], 48   \n"
-        "s32i.n   a4,  %[sb], 52   \n"
-        "s32i.n   a4,  %[sb], 56   \n"        
+        "addi    a8, %[sb], 20  \n"  /* ptr = &sb[5] */
+        "movi.n  a3, 10         \n"  /* 10 words */
 
+        "loop    a3, 1f         \n"
+        "s32i.n  a4, a8, 0      \n"
+        "addi.n  a8, a8, 4      \n"
+
+      "1:\n"
+        /* 3) busy-wait */
+        "l32i.n  a3, a5, 12 \n" /* 0x9C */
+        "bnez.n  a3, 1b\n"
 
         /* Continue hash */
         "movi.n  a3, 1\n"
-        "s32i    a3, %[sb], 0x94\n"
+        "s32i.n  a3, a5, 4\n" /* 0x94 */
         "memw \n"
 
       "2:\n"
         /* 3) busy-wait */
-        "l32i    a4, %[sb], 0x9C\n"
+        "l32i.n  a4, a5, 12 \n" /* 0x9C */
         "bnez.n  a4, 2b\n"
 
         /* Do load */
         "movi.n  a4, 1\n"
-        "s32i    a4, %[sb], 0x98\n"  
+        "s32i.n  a4, a5, 8\n"  
 
         "memw \n"
 
         "addi.n     a2, a2, 1\n"        /* Increment nonce */
+        
 
       "3:\n"
         /* 3) busy-wait */
-        "l32i    a4, %[sb], 0x9C\n"
+        "l32i.n  a4, a5, 12\n"
         "bnez.n  a4, 3b\n" 
 
         "movi.n  a4, 1\n"
@@ -659,7 +656,7 @@ void IRAM_ATTR miner1Task(void *task_id) {
 
         /* 1) start SHA */
         "movi.n  a4, 1\n"
-        "s32i    a4, %[sb], 0x90\n"
+        "s32i.n  a4, a5, 0\n"
 
         "memw\n"
        
@@ -675,18 +672,18 @@ void IRAM_ATTR miner1Task(void *task_id) {
 
       "4:\n"
         /* 3) busy-wait */
-        "l32i    a4, %[sb], 0x9C\n"
+        "l32i.n  a4, a5, 12\n"
         "bnez.n  a4, 4b\n" 
 
         /* Do load */
         "movi.n  a3, 1\n"
-        "s32i    a3, %[sb], 0x98\n"  
+        "s32i.n  a3, a5, 8\n" /* 0x98\ */  
 
         "memw \n"
 
       "5:\n"
         /* 3) busy-wait */
-        "l32i    a4, %[sb], 0x9C\n"
+        "l32i.n  a4, a5, 12\n"
         "bnez.n  a4, 5b\n" 
 
         /* bail on isMining if false */
@@ -707,7 +704,7 @@ void IRAM_ATTR miner1Task(void *task_id) {
           [ih] "r" (&monitorData.internalHashes),
           [nonce] "r"(&hb.nonce),
           [flag] "r"(&isMining)
-        : "a2", "a3", "a4", "a5", "a6", "a7", "memory"
+        : "a2", "a3", "a4", "a5", "a6", "a7", "a8", "memory"
       );
       
       // See if we have a hash worth checking

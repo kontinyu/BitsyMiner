@@ -485,6 +485,7 @@ void stratumTask(void *task_id) {
       //stratumCloseClientConnections(); // Close out anyone connected to us on our StratumServer
       dbg("*************************************************\nStratum: Attempting client connection...\n*************************************************\n");
       
+      
       addToWebLog(infoMessageColor, "Connecting to primary pool.");
 
       if (!client.connect(settings.poolUrl, settings.poolPort)) {
@@ -501,6 +502,7 @@ void stratumTask(void *task_id) {
             addToWebLog(infoMessageColor, "Connecting to backup pool.");
             if( client.connect(settings.backupPoolUrl, settings.backupPoolPort) ) {              
               if( subscribe(client, settings.backupWallet, settings.backupPoolPassword) ) { // Try to subscribe to backup connection
+                lastMiningNotify = millis();
                 backupConnectTime = millis();
                 currentWallet = settings.backupWallet;
                 safeStrnCpy(monitorData.currentPool, settings.backupPoolUrl, MAX_POOL_URL_LENGTH + 1);
@@ -517,6 +519,9 @@ void stratumTask(void *task_id) {
 
       } else {
       
+        // Reset last notify time to connection time
+        lastMiningNotify = millis();
+        
         // Make sure it's clear we're not on the
         // backup, in case this is the result of a settings update
         usingBackup = false;
@@ -583,7 +588,7 @@ void stratumTask(void *task_id) {
     }
 
     // If we're not getting messages from the server, time to close the connection
-    if( millis() - lastMiningNotify >= 600000 ) {
+    if( millis() - lastMiningNotify >= 700000 ) {
       addToWebLog(infoMessageColor, "No client activity. Disconnecting from pool.");
       dbg("******* DEAD CLIENT *******\n");
       stopClient(client);
