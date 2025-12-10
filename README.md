@@ -41,8 +41,6 @@ After installing, you can follow the setup video [here](https://www.youtube.com/
 
 BitsyMiner started as a personal project to learn more about Bitcoin mining. For simplicity's sake, I began working in the [Arduino IDE](https://www.arduino.cc/en/software/), and I never left it.
 
-I use version 2.0.17 of the Arduino Core for esp32 boards. I ran into odd problems when trying to upgrade, so I just stuck with it.
-
 
 <br/><br/>
 ### Required Libraries
