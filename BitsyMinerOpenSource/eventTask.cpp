@@ -265,7 +265,7 @@ void eventTask(void *task_id) {
       lastWifiReconnect = millis();
     }
 
-    if( MyWiFi::isConnected() ) {
+    if( ! timeClientActive && MyWiFi::isConnected() ) {
       timeClient.begin();
       timeClientActive = true;
     }
