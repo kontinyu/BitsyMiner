@@ -101,9 +101,15 @@ void setLED1Levels() {
   //duty = (4095 / valueMax) * min(value, valueMax);
 
   #if defined(ESP32_2432S028) || defined(ESP32_2432S024)
-  ledcWrite(LED1_RED_CHANNEL, (255 - settings.led1red) * 16 + 15); // Adding 15 to get it all the way to 4095 (all the way off)
-  ledcWrite(LED1_GREEN_CHANNEL, (255 - settings.led1green) * 16 + 15);
-  ledcWrite(LED1_BLUE_CHANNEL, (255 - settings.led1blue) * 16 + 15);
+    #if ESP_ARDUINO_VERSION < ESP_ARDUINO_VERSION_VAL(3, 0, 0)
+      ledcWrite(LED1_RED_CHANNEL, (255 - settings.led1red) * 16 + 15); // Adding 15 to get it all the way to 4095 (all the way off)
+      ledcWrite(LED1_GREEN_CHANNEL, (255 - settings.led1green) * 16 + 15);
+      ledcWrite(LED1_BLUE_CHANNEL, (255 - settings.led1blue) * 16 + 15);
+    #else
+      ledcWrite(LED1_RED_PIN, (255 - settings.led1red) * 16 + 15); // Adding 15 to get it all the way to 4095 (all the way off)
+      ledcWrite(LED1_GREEN_PIN, (255 - settings.led1green) * 16 + 15);
+      ledcWrite(LED1_BLUE_PIN, (255 - settings.led1blue) * 16 + 15);
+    #endif
   #endif
 
 }
@@ -248,7 +254,7 @@ void eventTask(void *task_id) {
 
   int16_t ntpFrequencyCounter = 0;  
   
-  timeClient.begin();
+  bool timeClientActive = false;
 
   while(1) {
   
@@ -257,6 +263,11 @@ void eventTask(void *task_id) {
     if( ! MyWiFi::isAccessPoint() && ! MyWiFi::isConnected() && millis() - lastWifiReconnect > WIFI_RECONNECT_TIME ) {
       MyWiFi::enterStationMode();
       lastWifiReconnect = millis();
+    }
+
+    if( MyWiFi::isConnected() ) {
+      timeClient.begin();
+      timeClientActive = true;
     }
 
     // Save statistics
@@ -313,7 +324,7 @@ void eventTask(void *task_id) {
 
 
     // Every once in a while deal with the NTP stuff
-    if( ++ntpFrequencyCounter == 10 ) {
+    if( ++ntpFrequencyCounter % 10 == 0 && timeClientActive ) {
       timeClient.update();
       monitorData.currentTime = timeClient.getEpochTime();
       ntpFrequencyCounter = 0;

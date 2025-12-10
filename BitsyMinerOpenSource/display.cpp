@@ -1013,7 +1013,12 @@ void refreshMiningScreen(bool resetFlags) {
 //
 ///////////////////////////////////////////////////////////////////////////////////////////
 void setBrightness(unsigned long brightness) {
-  ledcAnalogWrite(LEDC_CHANNEL_0, brightness);
+
+  #if ESP_ARDUINO_VERSION < ESP_ARDUINO_VERSION_VAL(3, 0, 0)
+    ledcAnalogWrite(LEDC_CHANNEL_0, brightness);
+  #else
+    ledcWrite(LCD_BACK_LIGHT_PIN, brightness * 16);
+  #endif
 }
 
 
@@ -1061,8 +1066,6 @@ void refreshDisplay() {
       break;
 
   }
- //Serial.printf("\nDisplay Stack Highwater: %d\n", uxTaskGetStackHighWaterMark(NULL));
- //Serial.printf("Free heap size: %lu\n", ESP.getFreeHeap());
 
 }
 
@@ -1096,10 +1099,6 @@ void redraw() {
       showClockPage();
       refreshClockPage(true);
       break;
-    // case SCREEN_PHOTOS:
-    //   showPhotoPage();
-    //   refreshPhotoPage();
-    //   break;
   }
 }
 
@@ -1142,20 +1141,6 @@ void handleScreenTouch() {
 }
 
 
-void fixHorizontalMirror() {
-  // Read current MADCTL value
-  uint8_t mad = tft.readcommand8(TFT_MADCTL, 0);
-  Serial.printf("MADCTL before: 0x%02X\n", mad);
-
-  // Toggle the X-mirror bit
-  mad ^= TFT_MAD_MX;
-
-  tft.writecommand(TFT_MADCTL);
-  tft.writedata(mad);
-
-  Serial.printf("MADCTL after : 0x%02X\n", mad);
-}
-
 ///////////////////////////////////////////////////////////////////////////////////////////
 //
 //
@@ -1197,15 +1182,16 @@ void initializeDisplay(uint8_t rotation, uint8_t brightness) {
   // Setting up the LEDC and configuring the Back light pin
   // NOTE: this needs to be done after tft.init()
 // ledcAttachChannel(LCD_BACK_LIGHT_PIN, LEDC_BASE_FREQ, LEDC_TIMER_12_BIT, LEDC_CHANNEL_0);
-#if ESP_IDF_VERSION_MAJOR >= 100 
-  ledcAttach(LEDC_CHANNEL_0, LEDC_BASE_FREQ, LEDC_TIMER_12_BIT);
-#else
+
+
+#if ESP_ARDUINO_VERSION < ESP_ARDUINO_VERSION_VAL(3, 0, 0)
   ledcSetup(LEDC_CHANNEL_0, LEDC_BASE_FREQ, LEDC_TIMER_12_BIT);
   ledcAttachPin(LCD_BACK_LIGHT_PIN, LEDC_CHANNEL_0);
+#else
+  ledcAttach(LCD_BACK_LIGHT_PIN, LEDC_BASE_FREQ, LEDC_TIMER_12_BIT);
 #endif
 
-  ledcAnalogWrite(LEDC_CHANNEL_0, brightness);
-
+  setBrightness(brightness);
 
 }
 #endif

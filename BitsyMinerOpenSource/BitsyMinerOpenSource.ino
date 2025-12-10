@@ -121,7 +121,7 @@ void settingsFromSDCard() {
 void ipCallback() {  
   if( ! MyWiFi::isAccessPoint() ) {
     IPAddress myIP = MyWiFi::getIP();
-    if( myIP != (uint32_t) INADDR_NONE ) {
+    if( myIP != INADDR_NONE ) {
       dbg("***********\nGot IP Address: %s\n***********\n", myIP.toString().c_str());
 
       String ip = myIP.toString();
@@ -137,6 +137,9 @@ void setup() {
   Serial.begin(115200);
   Serial.setTimeout(0);
   delay(100);
+
+  // Disable the watchdog timer entirely
+  esp_task_wdt_deinit();
 
   // Build our access point name in case we need it
   buildAccessPointName(apName);
@@ -201,7 +204,7 @@ void setup() {
   stratumMessageQueueHandle = xQueueCreateStatic(STRATUM_QUEUE_LENGTH, STRATUM_QUEUE_ITEM_SIZE, stratumQueueStorageArea, &stratumQueueBuffer);
   appMessageQueueHandle = xQueueCreateStatic(APPLICATION_MESSAGE_QUEUE_LENGTH, sizeof(ApplicationMessage), appMessageBuffer, &applicationMessageQueueBuffer);
 
-  disableCore0WDT();
+  //disableCore0WDT();
   
   // Try disabling power management
   esp_pm_lock_handle_t pm_lock;
@@ -229,6 +232,8 @@ void setup() {
     pinMode(LED1_GREEN_PIN, OUTPUT);
     pinMode(LED1_BLUE_PIN, OUTPUT);
 
+    #if ESP_ARDUINO_VERSION < ESP_ARDUINO_VERSION_VAL(3, 0, 0)
+
     ledcSetup(LED1_RED_CHANNEL, LED1_FREQUENCEY, LED1_RESOLUTION);
     ledcAttachPin(LED1_RED_PIN, LED1_RED_CHANNEL);
 
@@ -237,6 +242,14 @@ void setup() {
   
     ledcSetup(LED1_BLUE_CHANNEL, LED1_FREQUENCEY, LED1_RESOLUTION);
     ledcAttachPin(LED1_BLUE_PIN, LED1_BLUE_CHANNEL);
+
+    #else
+
+    ledcAttach(LED1_RED_PIN, LED1_FREQUENCEY, LED1_RESOLUTION);
+    ledcAttach(LED1_GREEN_PIN, LED1_FREQUENCEY, LED1_RESOLUTION);
+    ledcAttach(LED1_BLUE_PIN,LED1_FREQUENCEY, LED1_RESOLUTION);
+
+    #endif
 
     ledcWrite(LED1_RED_CHANNEL, HIGH);
     ledcWrite(LED1_GREEN_CHANNEL, HIGH);

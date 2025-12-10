@@ -26,7 +26,8 @@
   #include "soc/dport_reg.h"
 #endif
 #include "esp32/rom/ets_sys.h"
-
+#include "soc/i2s_reg.h"
+#include "soc/i2s_struct.h"
 
 #define MAX_DIFFICULTY 0x1d00ffff
 #define MAX_COINBASE_LENGTH 512
@@ -133,7 +134,7 @@ void bits_to_target(uint32_t nBits, uint8_t* target) {
 }
 
 // Checks hash against a target value
-__attribute__((section(".fastcode")))
+//__attribute__((section(".fastcode")))
 int check_target(const unsigned char* hash, const unsigned char* target) {
     int i, j;
     for (i = 31; i >0; i--) {
@@ -234,7 +235,7 @@ void longSwap(unsigned long* val) {
 }
 
 // Calculates hash difficulty and compares it to best achieved
-__attribute__((section(".fastcode")))
+//__attribute__((section(".fastcode")))
 void compareBestDifficulty(miner_sha256_hash *ctx) {
   static const double maxTarget = 26959535291011309493156476344723991336010898738574164086137773096960.0;
   double hashValue = 0.0;
@@ -252,7 +253,7 @@ void compareBestDifficulty(miner_sha256_hash *ctx) {
   }
 }
 
-__attribute__((section(".fastcode")))
+//__attribute__((section(".fastcode")))
 static double getDifficulty(miner_sha256_hash *ctx) {
   static const double maxTarget = 26959535291011309493156476344723991336010898738574164086137773096960.0;
   double hashValue = 0.0;
@@ -363,7 +364,7 @@ void setPoolDifficulty(double pDiff) {
 
 
 // Submit the job back to Stratum pool via a messaging queue
-__attribute__((section(".fastcode")))
+//__attribute__((section(".fastcode")))
 void submitJob(const char* jobId, uint32_t timestamp, uint32_t nonce, bool topPriority, uint32_t submitFlags, double difficulty) {
   
   //submit(jobId, extraNonce2, hb->timestamp, hb->nonce);
@@ -388,7 +389,7 @@ void submitJob(const char* jobId, uint32_t timestamp, uint32_t nonce, bool topPr
 }
 
 
-__attribute__((section(".fastcode")))
+//__attribute__((section(".fastcode")))
 void hashCheck(char* jobId, miner_sha256_hash *ctx, uint32_t timestamp, uint32_t nonce) {
 
   uint32_t submitFlags = 0;
@@ -418,7 +419,7 @@ void hashCheck(char* jobId, miner_sha256_hash *ctx, uint32_t timestamp, uint32_t
 }
 
 
-__attribute__((section(".fastcode")))
+//__attribute__((section(".fastcode")))
 void minerTask(void *task_id) {
 
   hash_block hb;
@@ -485,6 +486,15 @@ void minerTask(void *task_id) {
 }
 
 
+
+typedef struct {
+    uint32_t dw0; // Flags and length
+    uint32_t dw1; // Unused (usually)
+    uint32_t buffer_address; // Pointer to sha_dma_buffer
+    uint32_t next_desc_address; // Pointer to next descriptor (or NULL)
+} dma_desc_t;
+
+
 //__attribute__((section(".fastcode")))
 void IRAM_ATTR miner1Task(void *task_id) {
 
@@ -496,6 +506,17 @@ void IRAM_ATTR miner1Task(void *task_id) {
   hash_block hb __attribute__((aligned(4)));
   hash_block hbCheck __attribute__((aligned(4)));
 
+
+  /* Set up DMA business */
+  // Allocate the descriptor in DMA-capable memory
+  dma_desc_t dma_descriptor __attribute__((aligned(4)));  
+  
+  // 3. Configure the single DMA descriptor
+  dma_descriptor.dw0 = (64 << 12) | 0x80000000; // Total length (64) | EOF flag
+  dma_descriptor.dw1 = 0; // Reserved
+  dma_descriptor.buffer_address = (uint32_t) &hb; // Source buffer
+  dma_descriptor.next_desc_address = 0; // End of list
+  
 
   while(1) {
 
@@ -528,6 +549,10 @@ void IRAM_ATTR miner1Task(void *task_id) {
 
     volatile uint32_t *sha_base = (volatile uint32_t*) HASH_AREA_SHA256;
 
+    const uint32_t shaPad    = 0x80000000u; // word 8 for second SHA
+    const uint32_t firstShaBitLen = 0x00000280u;
+    const uint32_t secondShaBitLen = 0x00000100u; // 256 bits
+    
 
     INIT_HARDWARE_SHA256
 
@@ -538,11 +563,6 @@ void IRAM_ATTR miner1Task(void *task_id) {
         __asm__ __volatile__(
 
         "l32i.n   a2,  %[nonce], 0 \n" /* Store nonce in a register */
-
-        "movi     a6, 0x280 \n"   /* Data length */
-        "movi     a7, 0x80 \n"
-        "slli     a7, a7, 24 \n"  /* Terminating bit */
-
         "addi     a5,  %[sb], 0x90 \n" /* a5 = sb_ctl = sb + 0x90 */
 
       "proc_start: \n"
@@ -603,8 +623,8 @@ void IRAM_ATTR miner1Task(void *task_id) {
         "s32i.n  a3,  %[sb],    8 \n"
 
         "s32i.n    a2, %[sb], 12 \n" /* Nonce */
-        "s32i.n    a7, %[sb], 16 \n" /* Termininating bit */
-        "s32i.n    a6, %[sb], 60 \n" /* Bit length */
+        "s32i.n    %[pad2], %[sb], 16 \n" /* Termininating bit */
+        "s32i.n    %[len1], %[sb], 60 \n" /* Bit length */
 
         // Zero sb[20..56]
         "movi.n  a4,  0            \n" 
@@ -645,14 +665,9 @@ void IRAM_ATTR miner1Task(void *task_id) {
         "l32i.n  a4, a5, 12\n"
         "bnez.n  a4, 3b\n" 
 
-        "movi.n  a4, 1\n"
-        "slli    a4, a4, 31\n"
-        "s32i.n  a4, %[sb], 32\n"
-
         /* Set terminating bit and length */
-        "movi.n  a4, 1\n"
-        "slli    a4, a4, 8\n"
-        "s32i.n  a4, %[sb], 60\n"
+        "s32i.n   %[pad2], %[sb], 32 \n"
+        "s32i.n   %[len2], %[sb], 60 \n"        
 
         /* 1) start SHA */
         "movi.n  a4, 1\n"
@@ -703,8 +718,11 @@ void IRAM_ATTR miner1Task(void *task_id) {
           [IN] "r"(data),
           [ih] "r" (&monitorData.internalHashes),
           [nonce] "r"(&hb.nonce),
-          [flag] "r"(&isMining)
-        : "a2", "a3", "a4", "a5", "a6", "a7", "a8", "memory"
+          [flag] "r"(&isMining),
+          [pad2]  "r" (shaPad),
+          [len2]  "r" (secondShaBitLen),
+          [len1] "r" (firstShaBitLen)
+        : "a2", "a3", "a4", "a5", "a8", "memory"
       );
       
       // See if we have a hash worth checking

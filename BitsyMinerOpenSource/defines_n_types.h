@@ -23,6 +23,8 @@
 // Original BitsyMiner with support for online firmware updates
 // compiled as follows:
 // Minimal SPIFFS 1.9MB APP w/OTA 190KB SPIFFS
+// Events on core 0
+// Arduino on core 0
 
 // Uncomment one of the following
 #define ESP32_2432S028  // TOUCH SCREEN  ESP32 Dev Module 2.8"
