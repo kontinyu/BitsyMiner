@@ -260,12 +260,14 @@ void eventTask(void *task_id) {
   
 
     // Reconnect to WiFi if need be
-    if( ! MyWiFi::isAccessPoint() && ! MyWiFi::isConnected() && millis() - lastWifiReconnect > WIFI_RECONNECT_TIME ) {
+    if( ! MyWiFi::isAccessPoint() && ! MyWiFi::isConnected() && ! MyWiFi::isConnecting() && millis() - lastWifiReconnect > WIFI_RECONNECT_TIME ) {
+      dbg("Reconnecting WiFi...");
       MyWiFi::enterStationMode();
       lastWifiReconnect = millis();
     }
 
     if( ! timeClientActive && MyWiFi::isConnected() ) {
+      dbg("Starting NTP client...");
       timeClient.begin();
       timeClientActive = true;
     }

@@ -31,7 +31,9 @@ bool MyWiFi::isConnected() {
   return WiFi.status() == WL_CONNECTED;
 }
 
-
+bool MyWiFi::isConnecting() {
+  return (WiFi.status() == WL_IDLE_STATUS);
+}
 void MyWiFi::setIPCallback(MyWiFiEventCallback callback) {
   ipCallback = callback;
 }
@@ -110,48 +112,49 @@ void MyWiFi::configure(uint32_t ipAddress, uint32_t gatewayAddress, uint32_t sub
 void MyWiFi::enterAccessPointMode() {
   int16_t timeout = 20;
   if( WiFi.getMode() == WIFI_MODE_STA ) {
+    dbg("Entering access point mode..");
     WiFi.disconnect(true);
     while (WiFi.status() == WL_CONNECTED && --timeout > 0) {
         delay(100);
     }
   }
-  if( WiFi.getMode() != AP_MODE ) {
+  if( ! isAccessPoint() ) {
     WiFi.mode(AP_MODE);
     WiFi.softAP(apSSID, apPassword);  
   }
 }
 
+
 void MyWiFi::enterStationMode() {
-  int16_t timeout = 20;
-  if( WiFi.getMode() == WIFI_MODE_STA ) {
-    WiFi.disconnect(true);
-    while (WiFi.status() == WL_CONNECTED && --timeout > 0) {
-        delay(100);
-    }
-  } else if( WiFi.getMode() == AP_MODE ) {
-    WiFi.softAPdisconnect(true);
-    delay(100);
-  } 
-  //WiFi.setAutoConnect(false);
-  //WiFi.setAutoReconnect(false);
-  
-  WiFi.mode(WIFI_STA); 
-  WiFi.setSleep(false); 
   WiFi.persistent(false);
+  WiFi.softAPdisconnect(true);
+  WiFi.disconnect(true);
+
+  WiFi.mode(WIFI_STA);
+  WiFi.setSleep(false);
   WiFi.begin(theSSID, theSSIDPassword);
+
+  uint32_t start = millis();
+  const uint32_t timeoutMs = 20000; // 20 seconds
+
+  while (WiFi.status() != WL_CONNECTED && (millis() - start) < timeoutMs) {
+    delay(100);
+  }
+
+  if (WiFi.status() != WL_CONNECTED) {
+    dbg("WiFi connect timeout\n");
+  }
 }
+
 
 bool MyWiFi::isAccessPoint() {
   wifi_mode_t m = WiFi.getMode();
-  if( m == AP_MODE ) {
-    return true;
-  }
-  return false;
+  return (m == WIFI_MODE_AP || m == WIFI_MODE_APSTA);
 }
 
 IPAddress MyWiFi::getIP() {
   IPAddress s;
-  if( WiFi.getMode() == AP_MODE ) {
+  if( WiFi.getMode() == WIFI_MODE_APSTA || WiFi.getMode() == WIFI_AP ) {
     s = WiFi.softAPIP();
   } else if( WiFi.getMode() == WIFI_MODE_STA && WiFi.status() == WL_CONNECTED ) {
     s = WiFi.localIP();

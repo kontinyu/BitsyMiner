@@ -32,6 +32,7 @@ class MyWiFi {
     static void setSSIDInfo(char *ssid, char *password);
     static bool isAccessPoint();
     static bool isConnected();
+    static bool isConnecting();
     static IPAddress getIP();
     static void configure(uint32_t ipAddress, uint32_t gatewayAddress, uint32_t subnetAddress, uint32_t primaryDNSAddress, uint32_t secondaryDNSAddress);
     static void setupEvents();
