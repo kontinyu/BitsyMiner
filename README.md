@@ -21,6 +21,15 @@ The current code includes inline assembly that is very hardware-dependent and is
 
 Set up your environment by installing all of the required libraries in the Arduino IDE, attach your device, compile, and install.
 
+Changes to display type can be set in defines_n_types.h.
+
+In the tools menu, change the settings as follow:
+
+- Arduino Runs on Core 0
+- Events Run on Core 0
+- Parition Scheme:  Minimal SPIFFS (1.9MB APP with OTA/190KB SPIFFS)
+
+
 **Option 2:** Install from Binaries
 
 I have included a few binaries in the "binaries" folder. I may provide a loader at some point, but for the time being, navigate to the [binaries](binaries) folder and follow the instructions there.
