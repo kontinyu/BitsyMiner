@@ -1,8 +1,6 @@
 ## Binary installation files
 
 
-***** BINARIES ARE NOT CURRENTLY WORKING  - WORKING ON FIXING IT *****
-
 
 You can use a web-based flasher to program your device.
 
