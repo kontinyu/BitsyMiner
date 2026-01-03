@@ -51,10 +51,7 @@ jobs:
           arduino-cli lib install "TFT_eSPI"
           arduino-cli lib install "XPT2046_Touchscreen"
           arduino-cli lib install "CustomJWT"
-          arduino-cli lib install "PNGdec" || echo "PNGdec install failed"
-
-          # CustomJWT should be vendored or installed consistently
-          # Prefer vendoring for reproducibility
+          arduino-cli lib install "PNGdec"
 
       - name: Compile BitsyMinerOpenSource (${{ matrix.outname }})
         run: |
