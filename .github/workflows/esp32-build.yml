@@ -55,7 +55,7 @@ jobs:
       - name: Apply custom TFT_eSPI setup
         run: |
           mkdir -p ./libraries
-          arduino-cli lib install --install-path ./libraries "TFT_eSPI'   
+          arduino-cli lib install --install-path ./libraries "TFT_eSPI"
           # copy your User_Setup.h
           cp TFT_eSPI/*.h ./libraries/
           # optionally copy extra fonts or extras
