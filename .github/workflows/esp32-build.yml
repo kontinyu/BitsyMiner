@@ -51,21 +51,17 @@ jobs:
           arduino-cli lib install "XPT2046_Touchscreen"
           arduino-cli lib install "CustomJWT"
           arduino-cli lib install "PNGdec"
-          arduino-cli lib install "TFT_eSPI"
-
-      - name: Apply custom TFT_eSPI setup
+          
+      - name: Install TFT_eSPI locally
         run: |
-          # locate the installed library
-          TFT_LIB=$(arduino-cli lib list | grep '^TFT_eSPI ' | awk '{print $3}')
-          echo "Using TFT_eSPI path: $TFT_LIB"        
-          
-          # copy your User_Setup.h
-          cp TFT_eSPI/*.h $TFT_LIB
-          
-          # optionally copy extra fonts or extras
-          mkdir -p $TFT_LIB/TFT_Drivers
-          cp -r TFT_eSPI/TFT_Drivers/* $TFT_LIB/TFT_Drivers/
-          
+          mkdir -p ./libraries
+          git clone --depth 1 https://github.com/Bodmer/TFT_eSPI.git ./libraries/TFT_eSPI
+          # Copy custom User_Setup.h
+          cp TFT_eSPI/User_Setup.h ./libraries/TFT_eSPI/User_Setup.h
+          # Copy drivers/fonts
+          mkdir -p ./libraries/TFT_eSPI/TFT_Drivers
+          cp -r TFT_eSPI/TFT_Drivers/* ./libraries/TFT_eSPI/TFT_Drivers/
+                   
           
       - name: Compile BitsyMinerOpenSource (${{ matrix.outname }})
         run: |
