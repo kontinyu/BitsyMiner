@@ -15,8 +15,8 @@
 #ifndef DEFINES_N_TYPES_H
 #define DEFINES_N_TYPES_H
 
-#define MINING_HARDWARE_NAME "BitsyMiner"
-#define MINING_HARDWARE_VERSION_HEX 0x010000  // One byte each - X.X.X
+#define MINING_HARDWARE_NAME "BitsyMinerOpen"
+#define MINING_HARDWARE_VERSION_HEX 0x010100  // One byte each - X.X.X
 
 #define BYTESWAP32(z) ((uint32_t)((z&0xFF)<<24|((z>>8)&0xFF)<<16|((z>>16)&0xFF)<<8|((z>>24)&0xFF)))
 
@@ -27,7 +27,7 @@
 // Arduino on core 0
 
 // Uncomment one of the following
-#define ESP32_2432S028  // TOUCH SCREEN  ESP32 Dev Module 2.8"
+//#define ESP32_2432S028  // TOUCH SCREEN  ESP32 Dev Module 2.8"
 //#define ESP32_2432S024  // TOUCH SCREEN  ESP32 Dev Module 2.4"
 //#define ESP32_DEV_HEADLESS  // Compile without graphical support
 

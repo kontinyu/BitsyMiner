@@ -75,7 +75,7 @@ void settingsFromSDCard() {
 
   uint8_t cardType = SD.cardType();
   if( cardType == CARD_NONE ) {
-    dbg("No SD Card attached.\n");
+    dbg("No SD Card found.\n");
     return;
   }
 

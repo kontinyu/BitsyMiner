@@ -21,6 +21,8 @@
 #include <esp_now.h>
 #include "defines_n_types.h"
 
+#define INADDR_ANY ((uint32_t)0x0)
+
 typedef void (*MyWiFiEventCallback)(void);
 
 class MyWiFi {

@@ -94,20 +94,37 @@ void MyWiFi::setSSIDInfo(char *ssid, char *password) {
   strncpy(theSSIDPassword, password, MAX_PASSWORD_LENGTH);
 }
 
-void MyWiFi::configure(uint32_t ipAddress, uint32_t gatewayAddress, uint32_t subnetAddress, uint32_t primaryDNSAddress, uint32_t secondaryDNSAddress) {
-  IPAddress ip(ipAddress), gateway(gatewayAddress), subnet(subnetAddress), 
-    primaryDns(primaryDNSAddress), secondaryDns(secondaryDNSAddress);
 
-  dbg("%s\n", ip.toString().c_str());
-
-  if( ipAddress == (uint32_t) INADDR_NONE ) {
-    gateway = INADDR_NONE;
-    subnet = INADDR_NONE;
-    primaryDns = INADDR_NONE;
-    secondaryDns = INADDR_NONE;
+void MyWiFi::configure(uint32_t ipAddress,
+                       uint32_t gatewayAddress,
+                       uint32_t subnetAddress,
+                       uint32_t primaryDNSAddress,
+                       uint32_t secondaryDNSAddress)
+{
+  if (ipAddress == INADDR_NONE || ipAddress == INADDR_ANY) {
+    // Enable DHCP
+    WiFi.config(IPAddress(0,0,0,0),
+                IPAddress(0,0,0,0),
+                IPAddress(0,0,0,0));
+    return;
   }
-  WiFi.config(ip, gateway, subnet, primaryDns, secondaryDns);  
+
+  IPAddress ip(ipAddress);
+  IPAddress gateway(gatewayAddress);
+  IPAddress subnet(subnetAddress);
+  IPAddress primaryDns(primaryDNSAddress);
+  IPAddress secondaryDns(secondaryDNSAddress);
+
+  dbg("Static IP: %s\n", ip.toString().c_str());
+
+  if( ! WiFi.config(ip, gateway, subnet, primaryDns, secondaryDns) ) {
+    dbg("Failed to configure WiFi.");
+  } else {
+    dbg("Configured WiFi successfully.");
+  }
 }
+
+
 
 void MyWiFi::enterAccessPointMode() {
   int16_t timeout = 20;
@@ -128,7 +145,7 @@ void MyWiFi::enterAccessPointMode() {
 void MyWiFi::enterStationMode() {
   WiFi.persistent(false);
   WiFi.softAPdisconnect(true);
-  WiFi.disconnect(true);
+  WiFi.disconnect(false);
 
   WiFi.mode(WIFI_STA);
   WiFi.setSleep(false);
