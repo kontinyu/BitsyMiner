@@ -73,11 +73,12 @@ jobs:
             --output-dir build/${{ matrix.variant }} \
             BitsyMinerOpenSource
 
-      - name: Copy compiled binaries to /binaries
+      - name: Copy and Rename Binary
+        shell: bash
         run: |
           mkdir -p ./binaries
-          shopt -s globstar
-          # copy and rename the .bin for this variant
+          # arduino-cli with --output-dir usually creates [sketch].ino.bin
+          # We search the build folder and copy the first .bin file found
           cp build/${{ matrix.variant }}/*.ino.bin ./binaries/BitsyMinerOpenSource-${{ matrix.outname }}.bin
           
       - name: Upload firmware binary (${{ matrix.outname }})
@@ -85,3 +86,4 @@ jobs:
         with:
           name: BitsyMinerOpenSource-${{ matrix.outname }}
           path: ./binaries/BitsyMinerOpenSource-${{ matrix.outname }}.bin
+          if-no-files-found: error
