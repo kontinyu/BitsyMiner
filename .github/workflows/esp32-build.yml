@@ -1,0 +1,78 @@
+name: ESP32 Dev Module Build (multi-variant)
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        variant: [2432S024, 2432S028_9341, 2432S028_ST7789, headless]
+        include:
+          - variant: 2432S024
+            defines: ESP32_2432S024
+            outname: 2.4inch_9341
+
+          - variant: 2432S028_9341
+            defines: ESP32_2432S028
+            outname: 2.8inch_9341
+
+          - variant: 2432S028_ST7789
+            defines: "ESP32_2432S028 ST7789_LCD"
+            outname: 2.8inch_ST7789
+
+          - variant: headless
+            defines: ESP32_DEV_HEADLESS
+            outname: headless
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Arduino CLI
+        uses: arduino/setup-arduino-cli@v2
+        with:
+          version: latest
+
+      - name: Configure Arduino CLI & install ESP32 core
+        run: |
+          arduino-cli config init --overwrite
+          arduino-cli config set board_manager.additional_urls https://espressif.github.io/arduino-esp32/package_esp32_index.json
+          arduino-cli core update-index
+          arduino-cli core install esp32:esp32@2.0.17
+
+      - name: Install required libraries
+        run: |
+          arduino-cli lib install "ArduinoJson"
+          arduino-cli lib install "NTPClient"
+          arduino-cli lib install "TFT_eSPI"
+          arduino-cli lib install "XPT2046_Touchscreen"
+          arduino-cli lib install "CustomJWT"
+          arduino-cli lib install "PNGdec" || echo "PNGdec install failed"
+
+          # CustomJWT should be vendored or installed consistently
+          # Prefer vendoring for reproducibility
+
+      - name: Compile BitsyMinerOpenSource (${{ matrix.outname }})
+        run: |
+          mkdir -p build/${{ matrix.variant }}
+
+          arduino-cli compile \
+            --fqbn esp32:esp32:esp32 \
+            --build-property build.extra_flags="-D${{ matrix.defines }}" \
+            --output-dir build/${{ matrix.variant }} \
+            BitsyMinerOpenSource
+
+      - name: Rename firmware
+        run: |
+          mv build/${{ matrix.variant }}/*.bin \
+             build/${{ matrix.variant }}/BitsyMinerOpenSource-${{ matrix.outname }}.bin
+
+      - name: Upload firmware binary (${{ matrix.outname }})
+        uses: actions/upload-artifact@v4
+        with:
+          name: BitsyMinerOpenSource-${{ matrix.outname }}
+          path: build/${{ matrix.variant }}/BitsyMinerOpenSource-${{ matrix.outname }}.bin
