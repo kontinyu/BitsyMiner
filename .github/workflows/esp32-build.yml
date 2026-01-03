@@ -66,7 +66,6 @@ jobs:
       - name: Compile BitsyMinerOpenSource (${{ matrix.outname }})
         run: |
           mkdir -p build/${{ matrix.variant }}
-
           arduino-cli compile \
             --libraries ./libraries \
             --fqbn esp32:esp32:esp32:PartitionScheme=min_spiffs \
@@ -79,7 +78,7 @@ jobs:
           mkdir -p ./binaries
           shopt -s globstar
           # copy and rename the .bin for this variant
-          cp build/${{ matrix.variant }}/**/*.ino.bin ./binaries/BitsyMinerOpenSource-${{ matrix.outname }}.bin
+          cp build/${{ matrix.variant }}/*.ino.bin ./binaries/BitsyMinerOpenSource-${{ matrix.outname }}.bin
           
       - name: Upload firmware binary (${{ matrix.outname }})
         uses: actions/upload-artifact@v4
