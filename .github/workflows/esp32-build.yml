@@ -63,10 +63,6 @@ jobs:
             --output-dir build/${{ matrix.variant }} \
             BitsyMinerOpenSource
 
-      - name: Rename firmware
-        run: |
-          mv build/${{ matrix.variant }}/*.bin \
-             build/${{ matrix.variant }}/BitsyMinerOpenSource-${{ matrix.outname }}.bin
 
       - name: Upload firmware binary (${{ matrix.outname }})
         uses: actions/upload-artifact@v4
