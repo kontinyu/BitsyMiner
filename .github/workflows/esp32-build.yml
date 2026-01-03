@@ -74,16 +74,15 @@ jobs:
             --output-dir build/${{ matrix.variant }} \
             BitsyMinerOpenSource
 
-      - name: Copy compiled binaries
+      - name: Copy compiled binaries to /binaries
         run: |
           mkdir -p ./binaries
-          # enable recursive globbing
-          shopt -s globstar          
-          # Copy all .bin files from the build folder to /binaries
-          cp build/${{ matrix.variant }}/**/BitsyMinerOpenSource.ino.bin ./binaries/latest-${{ matrix.outname }}.bin
-
+          shopt -s globstar
+          # copy and rename the .bin for this variant
+          cp build/${{ matrix.variant }}/**/*.ino.bin ./binaries/BitsyMinerOpenSource-${{ matrix.outname }}.bin
+          
       - name: Upload firmware binary (${{ matrix.outname }})
         uses: actions/upload-artifact@v4
         with:
           name: BitsyMinerOpenSource-${{ matrix.outname }}
-          path: build/${{ matrix.variant }}/**/*.bin
+          path: ./binaries/BitsyMinerOpenSource-${{ matrix.outname }}.bin
