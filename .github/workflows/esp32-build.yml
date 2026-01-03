@@ -80,7 +80,7 @@ jobs:
           # enable recursive globbing
           shopt -s globstar          
           # Copy all .bin files from the build folder to /binaries
-          cp build/${{ matrix.display }}/**/BitsyMinerOpenSource.ino.bin ./binaries/latest-${{ matrix.outname }}.bin
+          cp build/${{ matrix.variant }}/**/BitsyMinerOpenSource.ino.bin ./binaries/latest-${{ matrix.outname }}.bin
 
       - name: Upload firmware binary (${{ matrix.outname }})
         uses: actions/upload-artifact@v4
