@@ -1,0 +1,170 @@
+name: ESP32 Dev Module Build (multi-variant)
+
+on:
+  push:
+    tags:
+      - 'v*'
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      extracted_version: ${{ steps.get_version.outputs.firmware_version }}
+    strategy:
+      matrix:
+        variant: [2432S024, 2432S028_9341, 2432S028_ST7789, headless]
+        include:
+          - variant: 2432S024
+            defines: "-DESP32_2432S024"
+            outname: 2.4inch_9341
+          - variant: 2432S028_9341
+            defines: "-DESP32_2432S028"
+            outname: 2.8inch_9341
+          - variant: 2432S028_ST7789
+            defines: "-DESP32_2432S028 -DST7789_LCD"
+            outname: 2.8inch_ST7789
+          - variant: headless
+            defines: "-DESP32_DEV_HEADLESS"
+            outname: headless
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Extract Version from Header
+        id: get_version
+        shell: bash
+        run: |
+          # 1. Find the line, get the hex value (0x010100), and remove '0x'
+          HEX_FULL=$(grep "MINING_HARDWARE_VERSION_HEX" defines_n_types.h | awk '{print $NF}' | sed 's/0x//')
+          
+          # 2. Extract pairs of characters
+          HEX_MAJOR=${HEX_FULL:0:2}
+          HEX_MINOR=${HEX_FULL:2:2}
+          HEX_PATCH=${HEX_FULL:4:2}
+          
+          # 3. Convert Hex to Decimal
+          MAJOR=$(printf "%d" 0x$HEX_MAJOR)
+          MINOR=$(printf "%d" 0x$HEX_MINOR)
+          PATCH=$(printf "%d" 0x$HEX_PATCH)
+          
+          # 4. Create the string (e.g., 1.1.0)
+          VERSION_STR="$MAJOR.$MINOR.$PATCH"
+          echo "Detected Version: $VERSION_STR"
+          
+          # 5. Save it for use in other steps and jobs
+          echo "firmware_version=$VERSION_STR" >> $GITHUB_OUTPUT
+
+      - name: Version Safety Check
+        shell: bash
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          # 1. Get the extracted version (e.g., 1.1.0)
+          EXTRACTED_VERSION="${{ steps.get_version.outputs.firmware_version }}"
+          
+          # 2. Get the Tag name and remove the 'v' (e.g., v1.1.0 -> 1.1.0)
+          TAG_VERSION=$(echo "${{ github.ref_name }}" | sed 's/^v//')
+          
+          echo "Comparing Header ($EXTRACTED_VERSION) with Tag ($TAG_VERSION)..."
+          
+          if [ "$EXTRACTED_VERSION" != "$TAG_VERSION" ]; then
+            echo "ERROR: Version Mismatch!"
+            echo "Your defines_n_types.h says $EXTRACTED_VERSION"
+            echo "But you are trying to release tag v$TAG_VERSION"
+            echo "Please update your header file or your tag and try again."
+            exit 1
+          else
+            echo "Versions match! Proceeding with build."
+          fi
+                
+      - name: Install Arduino CLI
+        uses: arduino/setup-arduino-cli@v2
+        with:
+          version: 1.4.x
+
+      - name: Configure Arduino CLI & install ESP32 core
+        run: |
+          arduino-cli config init --overwrite
+          arduino-cli config set board_manager.additional_urls https://espressif.github.io/arduino-esp32/package_esp32_index.json
+          arduino-cli core update-index
+          arduino-cli core install esp32:esp32@3.3.3
+
+      - name: Install required libraries
+        run: |
+          arduino-cli lib install "ArduinoJson" "NTPClient" "XPT2046_Touchscreen" "CustomJWT" "PNGdec"
+          
+      - name: Install TFT_eSPI locally
+        run: |
+          mkdir -p ./libraries
+          git clone --depth 1 https://github.com/Bodmer/TFT_eSPI.git ./libraries/TFT_eSPI
+          cp TFT_eSPI/User_Setup.h ./libraries/TFT_eSPI/User_Setup.h
+          mkdir -p ./libraries/TFT_eSPI/TFT_Drivers
+          cp -r TFT_eSPI/TFT_Drivers/* ./libraries/TFT_eSPI/TFT_Drivers/
+          
+      - name: Compile
+        run: |
+          mkdir -p build/${{ matrix.variant }}
+          arduino-cli compile \
+            --libraries ./libraries \
+            --fqbn esp32:esp32:esp32:PartitionScheme=min_spiffs \
+            --build-property build.extra_flags="${{ matrix.defines }} -DARDUINO_RUNNING_CORE=0 -DARDUINO_EVENT_RUNNING_CORE=0" \
+            --output-dir build/${{ matrix.variant }} \
+            BitsyMinerOpenSource
+
+      - name: Prepare Binary
+        shell: bash
+        run: |
+          mkdir -p ./binaries
+          cp build/${{ matrix.variant }}/*.ino.bin ./binaries/BitsyMinerOpenSource-${{ matrix.outname }}.bin
+
+      - name: Upload temporary artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: firmware-${{ matrix.outname }}
+          path: ./binaries/*.bin
+
+  release:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: write # Required to delete artifacts
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: all-binaries
+          pattern: firmware-*
+          merge-multiple: true
+
+      - name: Generate Checksums
+        shell: bash
+        working-directory: all-binaries
+        run: |
+          sha256sum *.bin > checksums.txt
+          echo "Generated checksums:"
+          cat checksums.txt
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "BitsyMiner v${{ needs.build.outputs.extracted_version }}"
+          tag_name: ${{ github.ref_name }} # Keeps the git tag (e.g., v1.1.0)
+          files: |
+            all-binaries/*.bin
+            all-binaries/checksums.txt
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+
+      # --- NEW CLEANER STEP ---
+      - name: Delete temporary artifacts
+        shell: bash
+        run: |
+          echo "Cleaning up temporary artifacts..."
+          # Fetch all artifact IDs matching the pattern and delete them
+          gh artifact list --name "firmware-*" --json id --jq '.[].id' | xargs -I {} gh artifact delete --id {}
+        env:
+          GH_TOKEN: ${{ github.token }}          
