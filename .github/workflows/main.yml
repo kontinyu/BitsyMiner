@@ -36,8 +36,15 @@ jobs:
         id: get_version
         shell: bash
         run: |
+          HEADER_FILE="BitsyMinerOpenSource/defines_n_types.h"
+          if [ ! -f "$HEADER_FILE" ]; then
+            echo "ERROR: Could not find $HEADER_FILE"
+            ls -R # This will list all files in the logs to help us find it
+            exit 1
+          fi
+          
           # 1. Find the line, get the hex value (0x010100), and remove '0x'
-          HEX_FULL=$(grep "MINING_HARDWARE_VERSION_HEX" defines_n_types.h | awk '{print $NF}' | sed 's/0x//')
+          HEX_FULL=$(grep "MINING_HARDWARE_VERSION_HEX" "$HEADER_FILE" | awk '{print $NF}' | sed 's/0x//')
           
           # 2. Extract pairs of characters
           HEX_MAJOR=${HEX_FULL:0:2}
