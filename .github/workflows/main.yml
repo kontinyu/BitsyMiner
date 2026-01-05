@@ -176,12 +176,13 @@ jobs:
         shell: bash
         run: |
           echo "Cleaning up temporary artifacts for run ${{ github.run_id }}..."
-          # Get the list of artifact IDs for this specific run and delete them
-          gh run download ${{ github.run_id }} --pattern "firmware-*" --dry-run # Verifies files exist
           
-          # Delete artifacts using the 'gh api' or 'gh run' method
-          gh api -X GET repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts \
+          # 1. Get the list of artifact IDs that start with 'firmware-'
+          # 2. Delete each one using the GitHub API
+          gh api repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts \
             --jq '.artifacts[] | select(.name | startswith("firmware-")) | .id' | \
             xargs -I {} gh api -X DELETE repos/${{ github.repository }}/actions/artifacts/{}
+            
+          echo "Cleanup complete."
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ github.token }}   
