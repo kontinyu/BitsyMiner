@@ -43,8 +43,13 @@ jobs:
             exit 1
           fi
           
-          # 1. Find the line, get the hex value (0x010100), and remove '0x'
-          HEX_FULL=$(grep "MINING_HARDWARE_VERSION_HEX" "$HEADER_FILE" | awk '{print $NF}' | sed 's/0x//')
+          # 1. Find the line, get the hex value (0x010100), and remove '0x'          
+          HEX_FULL=$(grep "MINING_HARDWARE_VERSION_HEX" "$HEADER_FILE" | sed -n 's/.*0x\([0-9A-Fa-f]\{6\}\).*/\1/p')
+          if [ -z "$HEX_FULL" ]; then
+            echo "ERROR: Could not find a valid 6-digit hex version (0xXXXXXX) in $HEADER_FILE"
+            grep "MINING_HARDWARE_VERSION_HEX" "$HEADER_FILE" # Show what it found for debugging
+            exit 1
+          fi
           
           # 2. Extract pairs of characters
           HEX_MAJOR=${HEX_FULL:0:2}
