@@ -113,6 +113,7 @@ jobs:
           cp TFT_eSPI/*.h ./libraries/TFT_eSPI/
           mkdir -p ./libraries/TFT_eSPI/TFT_Drivers
           cp -r TFT_eSPI/TFT_Drivers/* ./libraries/TFT_eSPI/TFT_Drivers/
+          ls -al ./libraries/TFT_eSPI
           
       - name: Compile
         run: |
@@ -127,6 +128,8 @@ jobs:
       - name: Prepare Binary
         shell: bash
         run: |
+          # Don't drag along existing binaries
+          rm -rf ./binaries
           mkdir -p ./binaries
           cp build/${{ matrix.variant }}/*.ino.bin ./binaries/BitsyMinerOpenSource-${{ matrix.outname }}.bin
 
