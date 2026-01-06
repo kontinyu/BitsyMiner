@@ -120,7 +120,6 @@ jobs:
           mkdir -p build/${{ matrix.variant }}
           arduino-cli compile \
             -v \
-            # --warnings all \
             --libraries ./libraries \
             --fqbn esp32:esp32:esp32:PartitionScheme=min_spiffs \
             --build-property build.extra_flags="${{ matrix.defines }} -DARDUINO_RUNNING_CORE=0 -DARDUINO_EVENT_RUNNING_CORE=0" \
