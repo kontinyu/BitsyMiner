@@ -23,16 +23,21 @@
 ///////////////////////////////////////////////////////
 
 // Only ONE line below should be uncommented to define your setup.  Add extra lines and files as needed.
-#if defined(ESP32_2432S024)
-	#include <Setup_ESP32_2432S024_ILI9341.h>
-#elif defined(ESP32_2432S028)
-	#if defined(ST7789_LCD)
-		#include <Setup_ESP32_2432S028_ST7789.h>
-	#else
-		#include <Setup_ESP32_2432S028_ILI9341.h>
-	#endif
+#if defined(ESP32_2432S028)
+    // --- Entered the correct board section ---
+    #if defined(ST7789_LCD)
+        #pragma message "SUCCESS: Compiling for ESP32_2432S028 with ST7789_LCD"
+        #include <Setup_ESP32_2432S028_ST7789.h>
+    #else
+        #pragma message "SUCCESS: Compiling for ESP32_2432S028 with default ILI9341"
+        #include <Setup_ESP32_2432S028_ILI9341.h>
+    #endif
+#elif defined(ESP32_2432S024)
+    #pragma message "SUCCESS: Compiling for the wrong board (ESP32_2432S024)"
+    #include <Setup_ESP32_2432S024_ILI9341.h>
 #else
-	#include <User_Setup.h>           // Default setup is root library folder
+    #pragma message "CRITICAL FAILURE: Falling through to generic User_Setup.h"
+    #include <User_Setup.h>
 #endif
 
 
