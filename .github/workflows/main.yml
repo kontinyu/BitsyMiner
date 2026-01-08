@@ -111,7 +111,7 @@ jobs:
           mkdir -p ./libraries
           git clone --depth 1 https://github.com/Bodmer/TFT_eSPI.git ./libraries/TFT_eSPI
           cp TFT_eSPI/*.h ./libraries/TFT_eSPI/
-          rm ./libraries/User_Setup.h
+          rm ./libraries/TFT_eSPI/User_Setup.h
           mkdir -p ./libraries/TFT_eSPI/TFT_Drivers          
           cp -r TFT_eSPI/TFT_Drivers/* ./libraries/TFT_eSPI/TFT_Drivers/
           ls -al ./libraries/TFT_eSPI
