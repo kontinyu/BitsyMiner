@@ -111,7 +111,8 @@ jobs:
           mkdir -p ./libraries
           git clone --depth 1 https://github.com/Bodmer/TFT_eSPI.git ./libraries/TFT_eSPI
           cp TFT_eSPI/*.h ./libraries/TFT_eSPI/
-          mkdir -p ./libraries/TFT_eSPI/TFT_Drivers
+          rm ./libraries/User_Setup.h
+          mkdir -p ./libraries/TFT_eSPI/TFT_Drivers          
           cp -r TFT_eSPI/TFT_Drivers/* ./libraries/TFT_eSPI/TFT_Drivers/
           ls -al ./libraries/TFT_eSPI
           
@@ -130,8 +131,8 @@ jobs:
         shell: bash
         run: |
           # Don't drag along existing binaries
-          rm -rf ./binaries
           mkdir -p ./binaries
+          rm -rf ./binaries          
           cp build/${{ matrix.variant }}/*.merged.bin ./binaries/BitsyMinerOpenSource-${{ matrix.outname }}.bin
 
       - name: Upload temporary artifact
