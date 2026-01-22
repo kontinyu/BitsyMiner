@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pio run:*)",
+      "Bash(platformio run:*)",
+      "Bash(python -m platformio run:*)",
+      "Bash(where python python3 py)",
+      "Bash(~/.platformio/penv/Scripts/platformio.exe run -e esp32_st7789_135x240)",
+      "Bash(~/.platformio/penv/Scripts/platformio.exe run -e esp32_2432s028_st7789)"
+    ]
+  }
+}

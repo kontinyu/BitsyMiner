@@ -17,7 +17,20 @@ The current code includes inline assembly that is very hardware-dependent and is
 <br/><br/>
 ### Installation
 
-**Option 1:** Compile from Source
+> **🚀 PLATFORMIO MIGRATION**: This project now uses PlatformIO for better dependency management and multi-environment builds. See [PLATFORMIO_SETUP.md](PLATFORMIO_SETUP.md) for quick start guide.
+
+**Option 1:** Compile with PlatformIO (Recommended)
+
+1. Install [PlatformIO IDE extension](https://platformio.org/install/ide?install=vscode) for VS Code
+2. Open this project folder in VS Code
+3. Select your hardware environment in `platformio.ini` (default: esp32_2432s028)
+4. Click "Build" or "Upload" in the PlatformIO sidebar
+
+See [PLATFORMIO_SETUP.md](PLATFORMIO_SETUP.md) for detailed instructions.
+
+**Option 2:** Compile from Source (Arduino IDE - Legacy)
+
+The original Arduino IDE project files are in the `BitsyMinerOpenSource/` folder.
 
 Set up your environment by installing all of the required libraries in the Arduino IDE, attach your device, compile, and install.
 
@@ -30,7 +43,7 @@ In the tools menu, change the settings as follow:
 - Parition Scheme:  Minimal SPIFFS (1.9MB APP with OTA/190KB SPIFFS)
 
 
-**Option 2:** Install from Binaries
+**Option 3:** Install from Binaries
 
 I have included a few binaries in the "binaries" folder. I may provide a loader at some point, but for the time being, navigate to the [binaries](binaries) folder and follow the instructions there.
 
@@ -39,11 +52,23 @@ After installing, you can follow the setup video [here](https://www.youtube.com/
 <br/><br/>
 ### Programming Environment
 
-BitsyMiner started as a personal project to learn more about Bitcoin mining. For simplicity's sake, I began working in the [Arduino IDE](https://www.arduino.cc/en/software/), and I never left it.
+BitsyMiner started as a personal project to learn more about Bitcoin mining. For simplicity's sake, I began working in the [Arduino IDE](https://www.arduino.cc/en/software/).
+
+**The project has now been migrated to PlatformIO** for better dependency management, multi-environment builds, and professional development tooling. Both Arduino IDE (legacy) and PlatformIO projects are maintained in this repository.
 
 
 <br/><br/>
-### Required Libraries
+### Required Libraries (PlatformIO - Automatic)
+
+When using PlatformIO, all dependencies are automatically managed via `platformio.ini`:
+
+- **ArduinoJson** (^7.0.0) - JSON parsing
+- **TFT_eSPI** (^2.5.43) - Display driver  
+- **XPT2046_Touchscreen** (^1.4) - Touch controller
+- **PNGdec** (^1.0.2) - PNG decoder
+
+<br/><br/>
+### Required Libraries (Arduino IDE - Manual)
 
 ArduinoJson
 Copyright © 2014-2024, Benoit BLANCHON
