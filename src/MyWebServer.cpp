@@ -120,12 +120,21 @@ void generateRandomJWTKey() {
   jwtKey[sizeof(jwtKey) - 1] = '\0';
 }
 
+char* escape_html_safe(const char* input, size_t max_len) {
+  // Handle NULL input
+  if (input == NULL) {
+    char* empty = (char*)malloc(1);
+    if (empty != NULL) {
+      empty[0] = '\0';
+    }
+    return empty;
+  }
 
-char* escape_html(const char* input) {
   // Calculate the length of the output string
   size_t length = 0;
   const char* ptr = input;
-  while (*ptr) {
+  size_t current_len = 0;
+  while (*ptr && current_len < max_len) {
     switch (*ptr) {
       case '&':
         length += 5;  // &amp;
@@ -147,6 +156,7 @@ char* escape_html(const char* input) {
         break;
     }
     ptr++;
+    current_len++;
   }
 
   // Allocate memory for the escaped string
@@ -158,7 +168,8 @@ char* escape_html(const char* input) {
   // Fill the escaped string
   char* dest = escaped;
   ptr = input;
-  while (*ptr) {
+  current_len = 0;
+  while (*ptr && current_len < max_len) {
     switch (*ptr) {
       case '&':
         strcpy(dest, "&amp;");
@@ -186,6 +197,7 @@ char* escape_html(const char* input) {
         break;
     }
     ptr++;
+    current_len++;
   }
 
   // Null-terminate the escaped string
@@ -284,15 +296,15 @@ void showConfigScreen(const char* messages) {
   server.setContentLength(CONTENT_LENGTH_UNKNOWN);
   server.send(200, "text/html", "");
 
-  char* username = escape_html(settings.htaccessUser);
-  char* ssid = escape_html(settings.ssid);
-  char* wallet = escape_html(settings.wallet);
-  char* poolUrl = escape_html(settings.poolUrl);
-  char* poolPassword = escape_html(settings.poolPassword);
-  char* ntpServer = escape_html(settings.ntpServer);
-  char* backupWallet = escape_html(settings.backupWallet);
-  char* backupPoolUrl = escape_html(settings.backupPoolUrl);
-  char* backupPoolPassword = escape_html(settings.backupPoolPassword);
+  char* username = escape_html_safe(settings.htaccessUser, sizeof(settings.htaccessUser));
+  char* ssid = escape_html_safe(settings.ssid, sizeof(settings.ssid));
+  char* wallet = escape_html_safe(settings.wallet, sizeof(settings.wallet));
+  char* poolUrl = escape_html_safe(settings.poolUrl, sizeof(settings.poolUrl));
+  char* poolPassword = escape_html_safe(settings.poolPassword, sizeof(settings.poolPassword));
+  char* ntpServer = escape_html_safe(settings.ntpServer, sizeof(settings.ntpServer));
+  char* backupWallet = escape_html_safe(settings.backupWallet, sizeof(settings.backupWallet));
+  char* backupPoolUrl = escape_html_safe(settings.backupPoolUrl, sizeof(settings.backupPoolUrl));
+  char* backupPoolPassword = escape_html_safe(settings.backupPoolPassword, sizeof(settings.backupPoolPassword));
 
   // Send header
   SEND_PAGE_HEADER;
@@ -1466,37 +1478,165 @@ void handleConfigPost() {
 }
 
 void handleStatusJson() {
+  // #region agent log
+  Serial.printf("{\"id\":\"log_entry\",\"timestamp\":%lu,\"location\":\"MyWebServer.cpp:1480\",\"message\":\"handleStatusJson entry\",\"data\":{\"monitorDataPtr\":%lu,\"settingsPtr\":%lu,\"tempPtr\":%lu},\"sessionId\":\"debug-session\",\"runId\":\"run1\",\"hypothesisId\":\"A\"}\n", millis(), (unsigned long)&monitorData, (unsigned long)&settings, (unsigned long)temp);
+  // #endregion
 
-  char* poolUrl = escape_html(monitorData.currentPool);
+  // Create safe null-terminated copies of all strings
+  char safeHps[21] = "0";
+  char safePoolSub[21] = "0";
+  char safeValidBlocks[21] = "0";
+  char safeBlocks32[21] = "0";
+  char safeBlocks16[21] = "0";
+  char safeBestDiff[21] = "0";
+  char safeTotalHashes[21] = "0";
+  char safeTotalJobs[21] = "0";
+  char safeMac[21] = "00:00:00:00:00:00";
+  char safePool[82] = "";
+  char poolDiffStr[20] = "0";
+  char safeUptime[25] = "0";
 
-  server.setContentLength(CONTENT_LENGTH_UNKNOWN);
-  server.send(200, "application/json", "");
+  const char* miningStatus = "false";
+  const char* poolStatus = "false";
+  
+  // #region agent log
+  Serial.printf("{\"id\":\"log_strings_init\",\"timestamp\":%lu,\"location\":\"MyWebServer.cpp:1497\",\"message\":\"String buffers initialized\",\"data\":{\"miningStatusPtr\":%lu,\"poolStatusPtr\":%lu},\"sessionId\":\"debug-session\",\"runId\":\"run1\",\"hypothesisId\":\"D\"}\n", millis(), (unsigned long)miningStatus, (unsigned long)poolStatus);
+  // #endregion
 
-  snprintf(temp, TEMP_BUFFER_SIZE, "{\"mining\": %s, \"hps\": \"%s\", \"poolSubmissions\": \"%s\", \"validBlocks\": \"%s\","
-                                   " \"poolConnected\": %s, \"blocks32\": \"%s\", \"blocks16\": \"%s\", \"poolHost\": \"%s\", \"poolPort\": %d,"
-                                   " \"uptime\": %llu, \"bestDifficulty\": \"%s\", \"totalHashes\": \"%s\", \"totalJobs\": \"%s\", \"blockHeight\": %lu, \"mac\": \"%s\", \"poolDifficulty\": %f}",
-           (monitorData.isMining ? trueString : falseString),
-           monitorData.hashesPerSecondStr,
-           monitorData.poolSubmissionsStr,
-           monitorData.validBlocksFoundStr,
-           (monitorData.poolConnected ? trueString : falseString),
-           monitorData.blocks32FoundStr,
-           monitorData.blocks16FoundStr,
-           poolUrl,
-           settings.poolPort,
-           monitorData.uptime,
-           monitorData.bestDifficultyStr,
-           monitorData.totalHashesStr,
-           monitorData.totalJobsStr,
-           monitorData.blockHeight,
-           monitorData.macAddress,
-           monitorData.poolDifficulty);
-
-  server.sendContent(temp);
-
-  if (poolUrl) {
-    free(poolUrl);
+  // Copy with explicit size limits to ensure null termination
+  // #region agent log
+  Serial.printf("{\"id\":\"log_monitor_check\",\"timestamp\":%lu,\"location\":\"MyWebServer.cpp:1499\",\"message\":\"Checking monitorData strings\",\"data\":{\"hpsStrPtr\":%lu,\"poolSubStrPtr\":%lu,\"validBlocksStrPtr\":%lu,\"blocks32StrPtr\":%lu,\"blocks16StrPtr\":%lu,\"bestDiffStrPtr\":%lu,\"totalHashesStrPtr\":%lu,\"totalJobsStrPtr\":%lu,\"macAddrPtr\":%lu,\"currentPoolPtr\":%lu},\"sessionId\":\"debug-session\",\"runId\":\"run1\",\"hypothesisId\":\"A\"}\n", millis(), (unsigned long)monitorData.hashesPerSecondStr, (unsigned long)monitorData.poolSubmissionsStr, (unsigned long)monitorData.validBlocksFoundStr, (unsigned long)monitorData.blocks32FoundStr, (unsigned long)monitorData.blocks16FoundStr, (unsigned long)monitorData.bestDifficultyStr, (unsigned long)monitorData.totalHashesStr, (unsigned long)monitorData.totalJobsStr, (unsigned long)monitorData.macAddress, (unsigned long)monitorData.currentPool);
+  // #endregion
+  if (monitorData.hashesPerSecondStr[0] != '\0') {
+    strncpy(safeHps, monitorData.hashesPerSecondStr, 20);
+    safeHps[20] = '\0';
   }
+  if (monitorData.poolSubmissionsStr[0] != '\0') {
+    strncpy(safePoolSub, monitorData.poolSubmissionsStr, 20);
+    safePoolSub[20] = '\0';
+  }
+  if (monitorData.validBlocksFoundStr[0] != '\0') {
+    strncpy(safeValidBlocks, monitorData.validBlocksFoundStr, 20);
+    safeValidBlocks[20] = '\0';
+  }
+  if (monitorData.blocks32FoundStr[0] != '\0') {
+    strncpy(safeBlocks32, monitorData.blocks32FoundStr, 20);
+    safeBlocks32[20] = '\0';
+  }
+  if (monitorData.blocks16FoundStr[0] != '\0') {
+    strncpy(safeBlocks16, monitorData.blocks16FoundStr, 20);
+    safeBlocks16[20] = '\0';
+  }
+  if (monitorData.bestDifficultyStr[0] != '\0') {
+    strncpy(safeBestDiff, monitorData.bestDifficultyStr, 20);
+    safeBestDiff[20] = '\0';
+  }
+  if (monitorData.totalHashesStr[0] != '\0') {
+    strncpy(safeTotalHashes, monitorData.totalHashesStr, 20);
+    safeTotalHashes[20] = '\0';
+  }
+  if (monitorData.totalJobsStr[0] != '\0') {
+    strncpy(safeTotalJobs, monitorData.totalJobsStr, 20);
+    safeTotalJobs[20] = '\0';
+  }
+  if (monitorData.macAddress[0] != '\0') {
+    strncpy(safeMac, monitorData.macAddress, 20);
+    safeMac[20] = '\0';
+  }
+  if (monitorData.currentPool[0] != '\0') {
+    strncpy(safePool, monitorData.currentPool, 80);
+    safePool[81] = '\0';
+  }
+
+  if (monitorData.isMining) {
+    miningStatus = "true";
+  }
+  if (monitorData.poolConnected) {
+    poolStatus = "true";
+  }
+
+  // Format pool difficulty as string to avoid %f issues on ESP32
+  dtostrf(monitorData.poolDifficulty, 1, 2, poolDiffStr);
+  
+  // Format uptime as string to avoid %llu issues on ESP32
+  // Split uint64_t into two uint32_t parts for formatting
+  uint32_t uptimeHigh = (uint32_t)(monitorData.uptime >> 32);
+  uint32_t uptimeLow = (uint32_t)(monitorData.uptime & 0xFFFFFFFF);
+  if (uptimeHigh > 0) {
+    // If high 32 bits are set, format as two parts
+    snprintf(safeUptime, sizeof(safeUptime), "%lu%08lu", (unsigned long)uptimeHigh, (unsigned long)uptimeLow);
+  } else {
+    // If only low 32 bits are set, format normally
+    snprintf(safeUptime, sizeof(safeUptime), "%lu", (unsigned long)uptimeLow);
+  }
+
+  // #region agent log
+  // Validate all string pointers and content before snprintf
+  bool allValid = true;
+  if (!miningStatus || !poolStatus) allValid = false;
+  if (!safeHps || !safePoolSub || !safeValidBlocks || !safeBlocks32 || !safeBlocks16) allValid = false;
+  if (!safePool || !safeBestDiff || !safeTotalHashes || !safeTotalJobs || !safeMac || !poolDiffStr) allValid = false;
+  if (!temp) allValid = false;
+  Serial.printf("{\"id\":\"log_before_snprintf\",\"timestamp\":%lu,\"location\":\"MyWebServer.cpp:1553\",\"message\":\"Before snprintf call\",\"data\":{\"tempPtr\":%lu,\"tempSize\":%d,\"miningStatusPtr\":%lu,\"poolStatusPtr\":%lu,\"safeHpsPtr\":%lu,\"safePoolSubPtr\":%lu,\"safeValidBlocksPtr\":%lu,\"safeBlocks32Ptr\":%lu,\"safeBlocks16Ptr\":%lu,\"safePoolPtr\":%lu,\"safeBestDiffPtr\":%lu,\"safeTotalHashesPtr\":%lu,\"safeTotalJobsPtr\":%lu,\"safeMacPtr\":%lu,\"poolDiffStrPtr\":%lu,\"settingsPtr\":%lu,\"settingsPoolPort\":%d,\"allValid\":%d,\"monitorDataUptime\":%llu,\"monitorDataBlockHeight\":%lu},\"sessionId\":\"debug-session\",\"runId\":\"run1\",\"hypothesisId\":\"B\"}\n", millis(), (unsigned long)temp, TEMP_BUFFER_SIZE, (unsigned long)miningStatus, (unsigned long)poolStatus, (unsigned long)safeHps, (unsigned long)safePoolSub, (unsigned long)safeValidBlocks, (unsigned long)safeBlocks32, (unsigned long)safeBlocks16, (unsigned long)safePool, (unsigned long)safeBestDiff, (unsigned long)safeTotalHashes, (unsigned long)safeTotalJobs, (unsigned long)safeMac, (unsigned long)poolDiffStr, (unsigned long)&settings, settings.poolPort, allValid ? 1 : 0, (unsigned long long)monitorData.uptime, (unsigned long)monitorData.blockHeight);
+  // #endregion
+
+  // Build JSON in parts to avoid varargs issues
+  // #region agent log
+  // Ensure all strings are null-terminated
+  safeHps[20] = '\0';
+  safePoolSub[20] = '\0';
+  safeValidBlocks[20] = '\0';
+  safeBlocks32[20] = '\0';
+  safeBlocks16[20] = '\0';
+  safeBestDiff[20] = '\0';
+  safeTotalHashes[20] = '\0';
+  safeTotalJobs[20] = '\0';
+  safeMac[20] = '\0';
+  safePool[81] = '\0';
+  poolDiffStr[19] = '\0';
+  Serial.printf("{\"id\":\"log_snprintf_call\",\"timestamp\":%lu,\"location\":\"MyWebServer.cpp:1554\",\"message\":\"About to call snprintf\",\"data\":{\"miningStatus\":\"%s\",\"poolStatus\":\"%s\"},\"sessionId\":\"debug-session\",\"runId\":\"run1\",\"hypothesisId\":\"ALL\"}\n", millis(), miningStatus ? miningStatus : "NULL", poolStatus ? poolStatus : "NULL");
+  // #endregion
+  
+  // Use a safer approach: build JSON incrementally to avoid varargs issues
+  int len = 0;
+  len += snprintf(temp + len, TEMP_BUFFER_SIZE - len, "{\"mining\": %s", miningStatus ? miningStatus : "false");
+  len += snprintf(temp + len, TEMP_BUFFER_SIZE - len, ", \"hps\": \"%s\"", safeHps);
+  len += snprintf(temp + len, TEMP_BUFFER_SIZE - len, ", \"poolSubmissions\": \"%s\"", safePoolSub);
+  len += snprintf(temp + len, TEMP_BUFFER_SIZE - len, ", \"validBlocks\": \"%s\"", safeValidBlocks);
+  len += snprintf(temp + len, TEMP_BUFFER_SIZE - len, ", \"poolConnected\": %s", poolStatus ? poolStatus : "false");
+  len += snprintf(temp + len, TEMP_BUFFER_SIZE - len, ", \"blocks32\": \"%s\"", safeBlocks32);
+  len += snprintf(temp + len, TEMP_BUFFER_SIZE - len, ", \"blocks16\": \"%s\"", safeBlocks16);
+  len += snprintf(temp + len, TEMP_BUFFER_SIZE - len, ", \"poolHost\": \"%s\"", safePool);
+  len += snprintf(temp + len, TEMP_BUFFER_SIZE - len, ", \"poolPort\": %d", (int)settings.poolPort);
+  len += snprintf(temp + len, TEMP_BUFFER_SIZE - len, ", \"uptime\": %s", safeUptime);
+  len += snprintf(temp + len, TEMP_BUFFER_SIZE - len, ", \"bestDifficulty\": \"%s\"", safeBestDiff);
+  len += snprintf(temp + len, TEMP_BUFFER_SIZE - len, ", \"totalHashes\": \"%s\"", safeTotalHashes);
+  len += snprintf(temp + len, TEMP_BUFFER_SIZE - len, ", \"totalJobs\": \"%s\"", safeTotalJobs);
+  len += snprintf(temp + len, TEMP_BUFFER_SIZE - len, ", \"blockHeight\": %lu", (unsigned long)monitorData.blockHeight);
+  len += snprintf(temp + len, TEMP_BUFFER_SIZE - len, ", \"mac\": \"%s\"", safeMac);
+  len += snprintf(temp + len, TEMP_BUFFER_SIZE - len, ", \"poolDifficulty\": %s}", poolDiffStr);
+  
+  // Ensure null termination
+  if (len >= TEMP_BUFFER_SIZE) {
+    len = TEMP_BUFFER_SIZE - 1;
+  }
+  temp[len] = '\0';
+  
+  size_t finalLen = strlen(temp);
+
+  // #region agent log
+  Serial.printf("{\"id\":\"log_after_snprintf\",\"timestamp\":%lu,\"location\":\"MyWebServer.cpp:1574\",\"message\":\"After snprintf call\",\"data\":{\"snprintfResult\":%d,\"len\":%d,\"tempLen\":%d,\"fullJson\":\"%s\"},\"sessionId\":\"debug-session\",\"runId\":\"run1\",\"hypothesisId\":\"ALL\"}\n", millis(), (int)finalLen, len, (int)finalLen, temp);
+  // #endregion
+
+  // Send response - matching pattern used by other JSON endpoints (sendAjaxResponse, handlePing, etc.)
+  // #region agent log
+  Serial.printf("{\"id\":\"log_before_send\",\"timestamp\":%lu,\"location\":\"MyWebServer.cpp:1618\",\"message\":\"Before server.send\",\"data\":{\"tempPtr\":%lu,\"tempLen\":%d},\"sessionId\":\"debug-session\",\"runId\":\"run1\",\"hypothesisId\":\"ALL\"}\n", millis(), (unsigned long)temp, (int)finalLen);
+  // #endregion
+  server.send(200, "application/json", temp);
+  
+  // #region agent log
+  Serial.printf("{\"id\":\"log_after_send\",\"timestamp\":%lu,\"location\":\"MyWebServer.cpp:1614\",\"message\":\"After send\",\"data\":{\"sentLen\":%d},\"sessionId\":\"debug-session\",\"runId\":\"run1\",\"hypothesisId\":\"ALL\"}\n", millis(), (int)finalLen);
+  // #endregion
 }
 
 void handleStatus() {

@@ -138,8 +138,11 @@ void setup() {
   Serial.setTimeout(0);
   delay(100);
 
-  // Disable the watchdog timer entirely
-  esp_task_wdt_deinit();
+  // Note: PlatformIO uses watchdog differently than Arduino IDE
+  // Instead of disabling it, we'll feed it in the miner tasks
+  // Attempt to deinit anyway (may fail with ESP_ERR_INVALID_STATE)
+  esp_err_t wdt_result = esp_task_wdt_deinit();
+  dbg("Initial watchdog deinit result: %d\n", wdt_result);
 
   // Build our access point name in case we need it
   buildAccessPointName(apName);
@@ -212,7 +215,7 @@ void setup() {
   esp_pm_lock_acquire(pm_lock);
   dbg("Attempting to disable power management.\n");
 
-  // Create miner tasks
+  // Create miner tasks (watchdog will be fed in mining loop)
   #ifndef SINGLE_CORE
     xTaskCreatePinnedToCore(minerTask, "Miner0", MINER_0_STACK_SIZE, (void*) 0, MINER_0_TASK_PRIORITY, &mTask1, MINER_0_CORE);
     xTaskCreatePinnedToCore(miner1Task, "Miner1", MINER_1_STACK_SIZE, (void*) 1, MINER_1_TASK_PRIORITY, &mTask2, MINER_1_CORE);

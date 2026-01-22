@@ -432,6 +432,10 @@ void minerTask(void *task_id) {
 
   dbg("Starting Miner %lu on core %d\n", task_id, xPortGetCoreID());
 
+  // Subscribe to watchdog for Core 0 miner (PlatformIO compatibility)
+  esp_task_wdt_add(NULL);
+  dbg("Miner %lu subscribed to watchdog\n", task_id);
+
   while(1) {
 
     if( isMining ) {
@@ -461,12 +465,13 @@ void minerTask(void *task_id) {
       while(isMining) {
 
         yieldCounter++;
-        if( (yieldCounter & 0xff) == 0 ){
-          taskYIELD();
-        }      
-               
+        if( (yieldCounter & 0xff) == 0 ){  // Yield and feed watchdog every 256 iterations
+          esp_task_wdt_reset();  // Feed the watchdog
+          vTaskDelay(1);  // Yield for 1ms
+        }
+
         if( sha256header(&midstate, &ctx, &hb) ) {
-          hashCheck(jobId, &ctx, hb.timestamp, hb.nonce);     
+          hashCheck(jobId, &ctx, hb.timestamp, hb.nonce);
         }
 
         hb.nonce += 1;        
