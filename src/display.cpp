@@ -19,17 +19,23 @@
 
 
 // This whole source is wrapped, as it was for supporting other display types
-#if defined(ESP32_2432S028) || defined(ESP32_2432S024) || defined(ESP32_ST7789_135X240)
+#if defined(ESP32_2432S028) || defined(ESP32_2432S024) || defined(ESP32_ST7789_135X240) || defined(ESP32_SSD1306_128X64)
 
-#include <SPI.h>
-#include <TFT_eSPI.h>
-#if defined(ESP32_2432S028) || defined(ESP32_2432S024)
-  #include <XPT2046_Touchscreen.h>
+#ifdef USE_OLED
+  #include <Wire.h>
+  #include <Adafruit_GFX.h>
+  #include <Adafruit_SSD1306.h>
+#else
+  #include <SPI.h>
+  #include <TFT_eSPI.h>
+  #if defined(ESP32_2432S028) || defined(ESP32_2432S024)
+    #include <XPT2046_Touchscreen.h>
+  #endif
+  #include <PNGdec.h>
+  #include "my_fonts.h"
+  #include "display_graphics.h"
 #endif
 
-#include <PNGdec.h>
-#include "my_fonts.h"
-#include "display_graphics.h"
 #include "esp32-hal-ledc.h"
 #include "qrcode.h"
 #include "MyWiFi.h"
@@ -71,6 +77,11 @@
   #define LCD_BACK_LIGHT_PIN 15
   // No touchscreen on this board
 
+#elif defined(ESP32_SSD1306_128X64)
+
+  // OLED does not have backlight control
+  // I2C pins defined in platformio.ini
+
 #endif
 
 // use first channel of 16 channels (started from zero)
@@ -83,6 +94,9 @@
 #if defined(ESP32_ST7789_135X240)
   #define SCREEN_WIDTH 135
   #define SCREEN_HEIGHT 240
+#elif defined(ESP32_SSD1306_128X64)
+  #define SCREEN_WIDTH 128
+  #define SCREEN_HEIGHT 64
 #else
   #define SCREEN_WIDTH 320
   #define SCREEN_HEIGHT 240
@@ -122,14 +136,18 @@ static const char *dataTitles[] = { "Total Hashes", "Best Difficulty", "Pool Job
 uint8_t currentScreen = SCREEN_MINING;
 uint8_t currentScreenOrientation = 0;
 
-TFT_eSPI tft = TFT_eSPI();
+#ifdef USE_OLED
+  Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
+#else
+  TFT_eSPI tft = TFT_eSPI();
 
-// Sprites
-TFT_eSprite img = TFT_eSprite(&tft);
-TFT_eSprite db1 = TFT_eSprite(&tft);
+  // Sprites
+  TFT_eSprite img = TFT_eSprite(&tft);
+  TFT_eSprite db1 = TFT_eSprite(&tft);
 
-TFT_eSprite portraitText = TFT_eSprite(&tft);
-TFT_eSprite landscapeText = TFT_eSprite(&tft);
+  TFT_eSprite portraitText = TFT_eSprite(&tft);
+  TFT_eSprite landscapeText = TFT_eSprite(&tft);
+#endif
 
 
 #if defined(ESP32_2432S028) 
@@ -1024,12 +1042,17 @@ void refreshMiningScreen(bool resetFlags) {
 //
 ///////////////////////////////////////////////////////////////////////////////////////////
 void setBrightness(unsigned long brightness) {
-
+#ifndef USE_OLED
   #if ESP_ARDUINO_VERSION < ESP_ARDUINO_VERSION_VAL(3, 0, 0)
     ledcAnalogWrite(LEDC_CHANNEL_0, brightness);
   #else
     ledcWrite(LCD_BACK_LIGHT_PIN, brightness * 16);
   #endif
+#else
+  // OLED displays don't have brightness control in SSD1306
+  // Some variants support contrast adjustment
+  display.dim(brightness < 128);
+#endif
 }
 
 
@@ -1041,6 +1064,9 @@ void setBrightness(unsigned long brightness) {
 // Called by Main to see if the screen is currently
 // being touched
 bool screenTouched() {
+#ifdef USE_OLED
+  return false; // No touchscreen on OLED display
+#else
   #if defined(ESP32_2432S028) || defined(ESP32_2432S024)
     return touchscreen.touched();
   #elif defined(ESP32_ST7789_135X240)
@@ -1052,9 +1078,81 @@ bool screenTouched() {
     }
     return false;
   #endif
-
+#endif
 }
 
+
+#ifdef USE_OLED
+///////////////////////////////////////////////////////////////////////////////////////////
+// OLED-specific display functions
+///////////////////////////////////////////////////////////////////////////////////////////
+void refreshOLEDMiningScreen() {
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setTextColor(SSD1306_WHITE);
+
+  // Line 1: Hash rate
+  display.setCursor(0, 0);
+  display.print(F("H/s: "));
+  display.println(monitorData.hashesPerSecondStr);
+
+  // Line 2: Pool submissions
+  display.setCursor(0, 10);
+  display.print(F("Pool: "));
+  display.println(monitorData.poolSubmissionsStr);
+
+  // Line 3: Best difficulty
+  display.setCursor(0, 20);
+  display.print(F("Best: "));
+  display.println(monitorData.bestDifficultyStr);
+
+  // Line 4: Valid blocks
+  display.setCursor(0, 30);
+  display.print(F("Blks: "));
+  display.println(monitorData.validBlocksFoundStr);
+
+  // Line 5: WiFi/Pool status
+  display.setCursor(0, 40);
+  if (monitorData.wifiConnected) {
+    display.print(F("WiFi:OK"));
+  } else {
+    display.print(F("WiFi:--"));
+  }
+  display.setCursor(64, 40);
+  if (monitorData.poolConnected) {
+    display.print(F("Pool:OK"));
+  } else {
+    display.print(F("Pool:--"));
+  }
+
+  // Line 6: Mining status
+  display.setCursor(0, 50);
+  if (monitorData.isMining) {
+    display.print(F("Status: MINING"));
+  } else {
+    display.print(F("Status: IDLE"));
+  }
+
+  display.display();
+}
+
+void refreshOLEDAccessPointScreen() {
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setTextColor(SSD1306_WHITE);
+
+  display.setCursor(0, 0);
+  display.println(F("Access Point Mode"));
+  display.println();
+  display.print(F("IP: "));
+  display.println(monitorData.ipAddress);
+  display.println();
+  display.println(F("Connect to WiFi"));
+  display.println(F("to configure"));
+
+  display.display();
+}
+#endif
 
 ///////////////////////////////////////////////////////////////////////////////////////////
 //
@@ -1063,6 +1161,19 @@ bool screenTouched() {
 ///////////////////////////////////////////////////////////////////////////////////////////
 // Redraws whatever the current screen is
 void refreshDisplay() {
+#ifdef USE_OLED
+  switch (currentScreen) {
+    case SCREEN_MINING:
+      refreshOLEDMiningScreen();
+      break;
+    case SCREEN_ACCESS_POINT:
+      refreshOLEDAccessPointScreen();
+      break;
+    default:
+      refreshOLEDMiningScreen();
+      break;
+  }
+#else
   switch (currentScreen) {
     case SCREEN_MINING:
       refreshMiningScreen(false);
@@ -1079,7 +1190,7 @@ void refreshDisplay() {
       break;
 
   }
-
+#endif
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////
@@ -1088,7 +1199,10 @@ void refreshDisplay() {
 //
 ///////////////////////////////////////////////////////////////////////////////////////////
 void redraw() {
-
+#ifdef USE_OLED
+  display.clearDisplay();
+  refreshDisplay();
+#else
   // Start fresh with inversion or not
   tft.invertDisplay(settings.invertColors);
 
@@ -1113,6 +1227,7 @@ void redraw() {
       refreshClockPage(true);
       break;
   }
+#endif
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////
@@ -1132,8 +1247,12 @@ void setCurrentScreen(uint8_t screen) {
 ///////////////////////////////////////////////////////////////////////////////////////////
 void setRotation(uint8_t rotation) {
   currentScreenOrientation = rotation;
+#ifndef USE_OLED
   tft.setRotation(rotation);
-  //touchscreen.setRotation(rotation);  
+  //touchscreen.setRotation(rotation);
+#else
+  display.setRotation(rotation);
+#endif
 }
 
 // Called if main decides we need to do
@@ -1163,6 +1282,24 @@ void initializeDisplay(uint8_t rotation, uint8_t brightness) {
 
   currentScreenOrientation = rotation;
 
+#ifdef USE_OLED
+  // Initialize I2C for OLED
+  Wire.begin(OLED_SDA, OLED_SCL);
+
+  // Initialize OLED display
+  if(!display.begin(SSD1306_SWITCHCAPVCC, OLED_ADDR)) {
+    Serial.println(F("SSD1306 allocation failed"));
+    return;
+  }
+
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setTextColor(SSD1306_WHITE);
+  display.setCursor(0, 0);
+  display.println(F("BitsyMiner"));
+  display.display();
+
+#else
   #if defined(ESP32_2432S028) || defined(ESP32_2432S024)
     touchscreenSPI.begin(XPT2046_CLK, XPT2046_MISO, XPT2046_MOSI, XPT2046_CS);
     touchscreen.begin(touchscreenSPI);
@@ -1173,40 +1310,24 @@ void initializeDisplay(uint8_t rotation, uint8_t brightness) {
     touchscreen.begin();
   #endif
 
-  //ts.begin();
-
-  // Set the Touchscreen rotation in landscape mode
-  //Note: in some displays, the touchscreen might be upside down, so you might need to set the rotation to 3: touchscreen.setRotation(3);
-  
-
   // Start the tft display
   tft.init();
-  
+
   tft.setRotation(rotation);
 
   // Invert colors for some reason
   tft.invertDisplay(settings.invertColors);
 
-  // Recommended setting on CYD - https://github.com/witnessmenow/ESP32-Cheap-Yellow-Display/blob/main/cyd.md
-  // tft.writecommand(ILI9341_GAMMASET); //Gamma curve selected
-  // tft.writedata(2);
-  // delay(120);
-  // tft.writecommand(ILI9341_GAMMASET); //Gamma curve selected
-  // tft.writedata(1);
-
   // Setting up the LEDC and configuring the Back light pin
-  // NOTE: this needs to be done after tft.init()
-// ledcAttachChannel(LCD_BACK_LIGHT_PIN, LEDC_BASE_FREQ, LEDC_TIMER_12_BIT, LEDC_CHANNEL_0);
-
-
-#if ESP_ARDUINO_VERSION < ESP_ARDUINO_VERSION_VAL(3, 0, 0)
-  ledcSetup(LEDC_CHANNEL_0, LEDC_BASE_FREQ, LEDC_TIMER_12_BIT);
-  ledcAttachPin(LCD_BACK_LIGHT_PIN, LEDC_CHANNEL_0);
-#else
-  ledcAttach(LCD_BACK_LIGHT_PIN, LEDC_BASE_FREQ, LEDC_TIMER_12_BIT);
-#endif
+  #if ESP_ARDUINO_VERSION < ESP_ARDUINO_VERSION_VAL(3, 0, 0)
+    ledcSetup(LEDC_CHANNEL_0, LEDC_BASE_FREQ, LEDC_TIMER_12_BIT);
+    ledcAttachPin(LCD_BACK_LIGHT_PIN, LEDC_CHANNEL_0);
+  #else
+    ledcAttach(LCD_BACK_LIGHT_PIN, LEDC_BASE_FREQ, LEDC_TIMER_12_BIT);
+  #endif
 
   setBrightness(brightness);
+#endif
 
 }
 #endif

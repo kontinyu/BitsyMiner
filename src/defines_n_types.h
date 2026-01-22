@@ -92,6 +92,12 @@
   #define USE_DISPLAY
   #define PIN_INPUT 0
   #include "display.h"
+#elif defined(ESP32_SSD1306_128X64)
+  #define MINING_HARDWARE_MODEL "BTC-ESP32-SSD1306-128x64"
+  #define USE_DISPLAY
+  #define USE_OLED
+  #define PIN_INPUT 0
+  #include "display.h"
 #elif defined(ESP32_DEV_HEADLESS)
   #define MINING_HARDWARE_MODEL "BTC-ESP32_DEV_HEADLESS"
   #define PIN_INPUT 0
