@@ -17,18 +17,16 @@
 #include "defines_n_types.h"
 
 #ifdef USE_OLED
+#include <U8g2lib.h>
 #ifdef USE_OLED_SPI
-#include <SPI.h>
-#include <Adafruit_SH110X.h>
+  #include <SPI.h>
 #else
-#include <Wire.h>
-#include <Adafruit_GFX.h>
-#include <Adafruit_SSD1306.h>
+  #include <Wire.h>
 #endif
+
 #include "monitor.h"
 #include "utils.h"
 #include "MyWiFi.h"
-
 
 #define SCREEN_WIDTH 128
 #define SCREEN_HEIGHT 64
@@ -40,12 +38,13 @@ uint8_t currentScreen = SCREEN_MINING;
 uint8_t currentScreenOrientation = 0;
 
 #ifdef USE_OLED_SPI
-Adafruit_SH1106G display(SCREEN_WIDTH, SCREEN_HEIGHT, &SPI, OLED_DC, OLED_RST, OLED_CS);
-#define OLED_WHITE SH110X_WHITE
+U8G2_SH1106_128X64_NONAME_F_4W_HW_SPI u8g2(U8G2_R0, OLED_CS, OLED_DC, OLED_RST);
 #else
-Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
-#define OLED_WHITE SSD1306_WHITE
+U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, U8X8_PIN_NONE, OLED_SCL, OLED_SDA);
 #endif
+
+#define OLED_WHITE 1
+#define OLED_BLACK 0
 
 ///////////////////////////////////////////////////////////////////////////////////////////
 // Initialize OLED display
@@ -54,102 +53,77 @@ void initializeDisplay(uint8_t rotation, uint8_t brightness) {
   currentScreenOrientation = rotation;
 
 #ifdef USE_OLED_SPI
-  // Initialize Hardware SPI with defined pins (SCK, MISO, MOSI, SS)
-  SPI.begin(OLED_CLK, -1, OLED_MOSI, -1);
-  if(!display.begin(0, true)) { // 0 = Address (ignored for SPI), true = reset
-    Serial.println(F("SH1106 allocation failed"));
-    return;
-  }
+  // Initialize hardware SPI with defined pins
+  SPI.begin(OLED_CLK, -1, OLED_MOSI, OLED_CS);
 #else
   // Initialize I2C for OLED
   Wire.begin(OLED_SDA, OLED_SCL);
-  // Initialize OLED display
-  if(!display.begin(SSD1306_SWITCHCAPVCC, OLED_ADDR)) {
-    Serial.println(F("SSD1306 allocation failed"));
-    return;
-  }
 #endif
-
-  display.clearDisplay();
-  display.setTextSize(1);
-  display.setTextColor(OLED_WHITE);
-  display.setCursor(0, 0);
-  display.println(F("BitsyMiner"));
-  display.println(F("Initializing..."));
-  display.display();
+  
+  u8g2.begin();
+  u8g2.clearBuffer();
+  u8g2.setFont(u8g2_font_6x10_tf);
+  u8g2.drawStr(0, 10, "BitsyMiner");
+  u8g2.drawStr(0, 25, "Initializing...");
+  u8g2.sendBuffer();
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////
 // OLED Mining Screen
 ///////////////////////////////////////////////////////////////////////////////////////////
 void refreshOLEDMiningScreen() {
-  display.clearDisplay();
-  display.setTextSize(1);
-  display.setTextColor(OLED_WHITE);
 
-  // Line 1: Hash rate
-  display.setCursor(0, 0);
-  display.print(F("H/s: "));
-  display.println(monitorData.hashesPerSecondStr);
-
-  // Line 2: Pool submissions
-  display.setCursor(0, 10);
-  display.print(F("Pool: "));
-  display.println(monitorData.poolSubmissionsStr);
-
-  // Line 3: Best difficulty
-  display.setCursor(0, 20);
-  display.print(F("Best: "));
-  display.println(monitorData.bestDifficultyStr);
-
-  // Line 4: Valid blocks
-  display.setCursor(0, 30);
-  display.print(F("Blks: "));
-  display.println(monitorData.validBlocksFoundStr);
-
-  // Line 5: WiFi/Pool status
-  display.setCursor(0, 40);
-  if (monitorData.wifiConnected) {
-    display.print(F("WiFi:OK"));
-  } else {
-    display.print(F("WiFi:--"));
-  }
-  display.setCursor(64, 40);
-  if (monitorData.poolConnected) {
-    display.print(F("Pool:OK"));
-  } else {
-    display.print(F("Pool:--"));
-  }
-
-  // Line 6: Mining status
-  display.setCursor(0, 50);
+  u8g2.clearBuffer();
+  
+  // "Qminer" title
+  u8g2.setFont(u8g2_font_helvB08_tr);
+  u8g2.drawStr(0, 12, "Qminer");
+  
+  // "KH/s" label
+  u8g2.drawStr(92, 12, "KH/s");
+  
+  // Line
+  u8g2.drawLine(0, 16, 127, 16);
+  
+  // Hashrate
+  u8g2.setFont(u8g2_font_helvB14_tr);
+  u8g2.setCursor(5, 36);
+  u8g2.print(monitorData.hashesPerSecondStr);
+  
+  // Stats
+  u8g2.setFont(u8g2_font_6x10_tf);
+  u8g2.setCursor(0, 58);
+  u8g2.print("Blks: ");
+  u8g2.print(monitorData.validBlocksFoundStr);
+  u8g2.print(" ");
   if (monitorData.isMining) {
-    display.print(F("Status: MINING"));
+    u8g2.print("MINING");
   } else {
-    display.print(F("Status: IDLE"));
+    u8g2.print("IDLE");
   }
+  
+  u8g2.sendBuffer();
 
-  display.display();
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////
 // OLED Access Point Screen
 ///////////////////////////////////////////////////////////////////////////////////////////
 void refreshOLEDAccessPointScreen() {
-  display.clearDisplay();
-  display.setTextSize(1);
-  display.setTextColor(OLED_WHITE);
 
-  display.setCursor(0, 0);
-  display.println(F("Access Point Mode"));
-  display.println();
-  display.print(F("IP: "));
-  display.println(MyWiFi::getIP().toString());
-  display.println();
-  display.println(F("Connect to WiFi"));
-  display.println(F("to configure"));
+  u8g2.clearBuffer();
+  u8g2.setFont(u8g2_font_6x10_tf);
+  u8g2.drawStr(0, 10, "Access Point Mode");
+  
+  u8g2.setCursor(0, 30);
+  u8g2.print("IP: ");
+  u8g2.print(MyWiFi::getIP().toString());
+  
+  u8g2.drawStr(0, 50, "Connect to WiFi");
+  u8g2.drawStr(0, 60, "to configure");
+  
+  u8g2.sendBuffer();
 
-  display.display();
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////
@@ -173,7 +147,7 @@ void refreshDisplay() {
 // Redraw the current screen
 ///////////////////////////////////////////////////////////////////////////////////////////
 void redraw() {
-  display.clearDisplay();
+  u8g2.clearBuffer();
   refreshDisplay();
 }
 
@@ -190,7 +164,9 @@ void setCurrentScreen(uint8_t screen) {
 ///////////////////////////////////////////////////////////////////////////////////////////
 void setRotation(uint8_t rotation) {
   currentScreenOrientation = rotation;
-  display.setRotation(rotation);
+
+  // U8g2 rotation is typically set in the constructor (U8G2_R0, etc.)
+  //u8g2.setDisplayRotation(rotation);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////
