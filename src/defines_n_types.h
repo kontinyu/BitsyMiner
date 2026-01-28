@@ -45,8 +45,8 @@
 #endif
 
 
-#define AP_SSID "Bitsy_"
-#define AP_SSID_PASSWORD "bitsyminer"
+#define AP_SSID "MesMiner_"
+#define AP_SSID_PASSWORD "12345678"
 
 #define FACTORY_RESET_BUTTON_TIME 10000
 #define ACCESS_POINT_BUTTON_TIME 4000
@@ -95,6 +95,13 @@
 #elif defined(ESP32_SSD1306_128X64)
   #define MINING_HARDWARE_MODEL "BTC-ESP32-SSD1306-128x64"
   #define USE_DISPLAY
+  #define USE_OLED
+  #define PIN_INPUT 0
+  #include "display.h"
+#elif defined(ESP32_SSD1306_128X64_spi)
+  #define MINING_HARDWARE_MODEL "BTC-ESP32-SSD1306-128x64_SPI"
+  #define USE_DISPLAY
+  #define USE_OLED_SPI
   #define USE_OLED
   #define PIN_INPUT 0
   #include "display.h"

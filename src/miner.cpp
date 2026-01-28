@@ -438,6 +438,8 @@ void minerTask(void *task_id) {
 
   while(1) {
 
+    esp_task_wdt_reset();
+
     if( isMining ) {
 
       // Check to see if we have core 0 mining turned off
@@ -763,5 +765,3 @@ void IRAM_ATTR miner1Task(void *task_id) {
   }
   
 }
-
-

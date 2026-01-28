@@ -15,7 +15,9 @@
 #ifndef DISPLAY_H
 #define DISPLAY_H
 
-#if defined(ESP32_2432S028) || defined(ESP32_2432S024) || defined(ESP32_ST7789_135X240) || defined(ESP32_SSD1306_128X64)
+#include <Arduino.h>
+
+#if defined(ESP32_2432S028) || defined(ESP32_2432S024) || defined(ESP32_ST7789_135X240) || defined(ESP32_SSD1306_128X64) || defined(ESP32_SSD1306_128X64_spi)
 
 #define SCREEN_MINING 1
 #define SCREEN_ACCESS_POINT 2

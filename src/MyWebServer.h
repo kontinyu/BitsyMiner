@@ -1449,11 +1449,11 @@ static const char loginPage[] PROGMEM =
   "&nbsp;Login</h3></div></div>\
   <div class=\"c\"><form method=\"post\" id=\"loginform\">\
   <div class=\"row\">\
-    Username\    
+    Username\
   <input class=\"card w-100 lower\" id=\"username\" type=\"text\" name=\"username\" autocorrect=\"off\" autocapitalize=\"off\">\
   </div>\
   <div class=\"row\" style=\"position:relative\">\
-    Password \    
+    Password \
     <input type=\"password\" class=\"card w-100 capsWatch\" id=\"password\" name=\"password\" data-caps-indicator=\"capsInd\">\
     <div id=\"capsInd\" style=\"position:absolute;right:30px;top:-6px;color:red;display:none\">Caps Lock</div>\
   </div>\
@@ -1461,7 +1461,7 @@ static const char loginPage[] PROGMEM =
     <hr>\
     <input type=\"submit\" class=\"btn\" value=\"Log in\">\
     </form>\
-  </div>\  
+  </div>\
 </div>\
 <div id=\"loadingOverlay\" class=\"loading\">Loading&#8230;</div>\
 <script>function pageLoadFunction() {\
@@ -1487,8 +1487,8 @@ static const char statusPage[] PROGMEM =
   <tr><td>Best Difficulty</td><td id=\"bestDifficulty\"></td></tr>\
   <tr><td>Total Pool Jobs</td><td id=\"totalJobs\"></td></tr>\
   <tr><td>Pool Targets Met</td><td id=\"poolSubmissions\"></td></tr>\
-  <tr><td>32-bit Targets Met</td><td id=\"blocks32\"></td></tr>\ 
-  <tr><td>Pool Difficulty</td><td id=\"poolDiff\"></td></tr>\ 
+  <tr><td>32-bit Targets Met</td><td id=\"blocks32\"></td></tr>\
+  <tr><td>Pool Difficulty</td><td id=\"poolDiff\"></td></tr>\
   <tr><td>Blocks Found</td><td id=\"validBlocks\"></td></tr>\
   <tr><td>Pool</td><td id=\"currentPool\"></td></tr>\
   <tr><td>MAC Address</td><td id=\"macAddress\"></td></tr>\

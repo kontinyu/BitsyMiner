@@ -36,9 +36,12 @@ typedef struct {
 
 extern MonitorData monitorData;
 extern SetupData settings;
-
+/*Default Password: In src/nvs_handler.cpp, the default password is set to "miner", which is 5 characters long.
+Minimum Length: In src/defines_n_types.h, MIN_PASSWORD_LENGTH is defined as 8.
+Enforcement: Since the default password (5 chars) is shorter than the minimum (8 chars), the if condition fails. The web server renders the "User Settings" form (which appears before this check), but skips rendering the rest of the configuration forms.
+Resolution: The user must update their password to be at least 8 characters long via the "User Settings" form. Once updated, strlen will be >= 8, and subsequent loads of the config page will reveal the rest of the settings.*/
 const uint16_t defaults16[] = {MODE_FACTORY_FRESH, 21496, 0};
-const char* defaultChar[] = {"bitsy", "miner", "public-pool.io", "", "x", "north-america.pool.ntp.org"};
+const char* defaultChar[] = {"mes", "12345678", "public-pool.io", "", "x", "time.google.com"};
 const uint8_t defaults8[] = {128, 0};
 const uint32_t defaults32[] = {0, 0x042045, 0xffffff };
 const bool defaultsBool[] = {true, false};

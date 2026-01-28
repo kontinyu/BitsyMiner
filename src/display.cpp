@@ -12,29 +12,23 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  */
-#include <Arduino.h>
-#include "defines_n_types.h"
-#include "monitor.h"
-#include "utils.h"
+
 
 
 // This whole source is wrapped, as it was for supporting other display types
-#if defined(ESP32_2432S028) || defined(ESP32_2432S024) || defined(ESP32_ST7789_135X240) || defined(ESP32_SSD1306_128X64)
+#include "defines_n_types.h"
+#if defined(ESP32_2432S028) || defined(ESP32_2432S024) || defined(ESP32_ST7789_135X240)
 
-#ifdef USE_OLED
-  #include <Wire.h>
-  #include <Adafruit_GFX.h>
-  #include <Adafruit_SSD1306.h>
-#else
-  #include <SPI.h>
-  #include <TFT_eSPI.h>
-  #if defined(ESP32_2432S028) || defined(ESP32_2432S024)
-    #include <XPT2046_Touchscreen.h>
-  #endif
-  #include <PNGdec.h>
-  #include "my_fonts.h"
-  #include "display_graphics.h"
+#include "monitor.h"
+#include "utils.h"
+#include <SPI.h>
+#include <TFT_eSPI.h>
+#if defined(ESP32_2432S028) || defined(ESP32_2432S024)
+  #include <XPT2046_Touchscreen.h>
 #endif
+#include <PNGdec.h>
+#include "my_fonts.h"
+#include "display_graphics.h"
 
 #include "esp32-hal-ledc.h"
 #include "qrcode.h"
@@ -136,18 +130,14 @@ static const char *dataTitles[] = { "Total Hashes", "Best Difficulty", "Pool Job
 uint8_t currentScreen = SCREEN_MINING;
 uint8_t currentScreenOrientation = 0;
 
-#ifdef USE_OLED
-  Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
-#else
-  TFT_eSPI tft = TFT_eSPI();
+TFT_eSPI tft = TFT_eSPI();
 
-  // Sprites
-  TFT_eSprite img = TFT_eSprite(&tft);
-  TFT_eSprite db1 = TFT_eSprite(&tft);
+// Sprites
+TFT_eSprite img = TFT_eSprite(&tft);
+TFT_eSprite db1 = TFT_eSprite(&tft);
 
-  TFT_eSprite portraitText = TFT_eSprite(&tft);
-  TFT_eSprite landscapeText = TFT_eSprite(&tft);
-#endif
+TFT_eSprite portraitText = TFT_eSprite(&tft);
+TFT_eSprite landscapeText = TFT_eSprite(&tft);
 
 
 #if defined(ESP32_2432S028) 
@@ -1042,17 +1032,11 @@ void refreshMiningScreen(bool resetFlags) {
 //
 ///////////////////////////////////////////////////////////////////////////////////////////
 void setBrightness(unsigned long brightness) {
-#ifndef USE_OLED
   #if ESP_ARDUINO_VERSION < ESP_ARDUINO_VERSION_VAL(3, 0, 0)
     ledcAnalogWrite(LEDC_CHANNEL_0, brightness);
   #else
     ledcWrite(LCD_BACK_LIGHT_PIN, brightness * 16);
   #endif
-#else
-  // OLED displays don't have brightness control in SSD1306
-  // Some variants support contrast adjustment
-  display.dim(brightness < 128);
-#endif
 }
 
 
@@ -1064,9 +1048,6 @@ void setBrightness(unsigned long brightness) {
 // Called by Main to see if the screen is currently
 // being touched
 bool screenTouched() {
-#ifdef USE_OLED
-  return false; // No touchscreen on OLED display
-#else
   #if defined(ESP32_2432S028) || defined(ESP32_2432S024)
     return touchscreen.touched();
   #elif defined(ESP32_ST7789_135X240)
@@ -1078,81 +1059,8 @@ bool screenTouched() {
     }
     return false;
   #endif
-#endif
 }
 
-
-#ifdef USE_OLED
-///////////////////////////////////////////////////////////////////////////////////////////
-// OLED-specific display functions
-///////////////////////////////////////////////////////////////////////////////////////////
-void refreshOLEDMiningScreen() {
-  display.clearDisplay();
-  display.setTextSize(1);
-  display.setTextColor(SSD1306_WHITE);
-
-  // Line 1: Hash rate
-  display.setCursor(0, 0);
-  display.print(F("H/s: "));
-  display.println(monitorData.hashesPerSecondStr);
-
-  // Line 2: Pool submissions
-  display.setCursor(0, 10);
-  display.print(F("Pool: "));
-  display.println(monitorData.poolSubmissionsStr);
-
-  // Line 3: Best difficulty
-  display.setCursor(0, 20);
-  display.print(F("Best: "));
-  display.println(monitorData.bestDifficultyStr);
-
-  // Line 4: Valid blocks
-  display.setCursor(0, 30);
-  display.print(F("Blks: "));
-  display.println(monitorData.validBlocksFoundStr);
-
-  // Line 5: WiFi/Pool status
-  display.setCursor(0, 40);
-  if (monitorData.wifiConnected) {
-    display.print(F("WiFi:OK"));
-  } else {
-    display.print(F("WiFi:--"));
-  }
-  display.setCursor(64, 40);
-  if (monitorData.poolConnected) {
-    display.print(F("Pool:OK"));
-  } else {
-    display.print(F("Pool:--"));
-  }
-
-  // Line 6: Mining status
-  display.setCursor(0, 50);
-  if (monitorData.isMining) {
-    display.print(F("Status: MINING"));
-  } else {
-    display.print(F("Status: IDLE"));
-  }
-
-  display.display();
-}
-
-void refreshOLEDAccessPointScreen() {
-  display.clearDisplay();
-  display.setTextSize(1);
-  display.setTextColor(SSD1306_WHITE);
-
-  display.setCursor(0, 0);
-  display.println(F("Access Point Mode"));
-  display.println();
-  display.print(F("IP: "));
-  display.println(monitorData.ipAddress);
-  display.println();
-  display.println(F("Connect to WiFi"));
-  display.println(F("to configure"));
-
-  display.display();
-}
-#endif
 
 ///////////////////////////////////////////////////////////////////////////////////////////
 //
@@ -1161,19 +1069,6 @@ void refreshOLEDAccessPointScreen() {
 ///////////////////////////////////////////////////////////////////////////////////////////
 // Redraws whatever the current screen is
 void refreshDisplay() {
-#ifdef USE_OLED
-  switch (currentScreen) {
-    case SCREEN_MINING:
-      refreshOLEDMiningScreen();
-      break;
-    case SCREEN_ACCESS_POINT:
-      refreshOLEDAccessPointScreen();
-      break;
-    default:
-      refreshOLEDMiningScreen();
-      break;
-  }
-#else
   switch (currentScreen) {
     case SCREEN_MINING:
       refreshMiningScreen(false);
@@ -1190,7 +1085,7 @@ void refreshDisplay() {
       break;
 
   }
-#endif
+
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////
@@ -1199,10 +1094,7 @@ void refreshDisplay() {
 //
 ///////////////////////////////////////////////////////////////////////////////////////////
 void redraw() {
-#ifdef USE_OLED
-  display.clearDisplay();
-  refreshDisplay();
-#else
+
   // Start fresh with inversion or not
   tft.invertDisplay(settings.invertColors);
 
@@ -1227,7 +1119,6 @@ void redraw() {
       refreshClockPage(true);
       break;
   }
-#endif
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////
@@ -1247,12 +1138,8 @@ void setCurrentScreen(uint8_t screen) {
 ///////////////////////////////////////////////////////////////////////////////////////////
 void setRotation(uint8_t rotation) {
   currentScreenOrientation = rotation;
-#ifndef USE_OLED
   tft.setRotation(rotation);
-  //touchscreen.setRotation(rotation);
-#else
-  display.setRotation(rotation);
-#endif
+  //touchscreen.setRotation(rotation);  
 }
 
 // Called if main decides we need to do
@@ -1282,24 +1169,6 @@ void initializeDisplay(uint8_t rotation, uint8_t brightness) {
 
   currentScreenOrientation = rotation;
 
-#ifdef USE_OLED
-  // Initialize I2C for OLED
-  Wire.begin(OLED_SDA, OLED_SCL);
-
-  // Initialize OLED display
-  if(!display.begin(SSD1306_SWITCHCAPVCC, OLED_ADDR)) {
-    Serial.println(F("SSD1306 allocation failed"));
-    return;
-  }
-
-  display.clearDisplay();
-  display.setTextSize(1);
-  display.setTextColor(SSD1306_WHITE);
-  display.setCursor(0, 0);
-  display.println(F("BitsyMiner"));
-  display.display();
-
-#else
   #if defined(ESP32_2432S028) || defined(ESP32_2432S024)
     touchscreenSPI.begin(XPT2046_CLK, XPT2046_MISO, XPT2046_MOSI, XPT2046_CS);
     touchscreen.begin(touchscreenSPI);
@@ -1327,7 +1196,6 @@ void initializeDisplay(uint8_t rotation, uint8_t brightness) {
   #endif
 
   setBrightness(brightness);
-#endif
 
 }
 #endif

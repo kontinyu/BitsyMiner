@@ -360,14 +360,14 @@ void showConfigScreen(const char* messages) {
     <div class=\"panel\">\
     <form id=\"frmNetwork\">\
     <div class=\"row\">\
-      WiFi SSID\ 
-      <div class=\"rel\">\   
+      WiFi SSID\
+      <div class=\"rel\">\
         <input class=\"card w-100\" id=\"ssid\" type=\"text\" name=\"ssid\" value=\"%s\" autocorrect=\"off\" autocapitalize=\"none\">\
         <input type=\"button\" id=\"btnScanNetworks\" class=\"btn inside-button\" value=\"Scan\">\
       </div>\
     </div>\
     <div class=\"row\" style=\"position:relative\">\
-      WiFi Password\    
+      WiFi Password\
       <input class=\"card w-100 capsWatch\" id=\"ssidPassword\" type=\"password\" name=\"ssidPassword\" autocomplete=\"off\" placeholder=\"Never shown\" data-caps-indicator=\"capsInd2\">\
       <div id=\"capsInd2\" style=\"position:absolute;right:30px;top:-6px;color:red;display:none\">Caps Lock</div>\
       <input type=\"checkbox\" id=\"showWifiPassword\">&nbsp;<span style=\"font-size:.8em;margin-left:5px;\">Show Password</span>\
@@ -385,7 +385,7 @@ void showConfigScreen(const char* messages) {
     // Use Static IP
     snprintf(temp, TEMP_BUFFER_SIZE,
       "<div class=\"row\">\
-      Static IP Address\    
+      Static IP Address\
       <select class=\"card w-100\" name=\"staticIp\" id=\"staticIp\">\
       <option value=\"false\"%s>No</value>\
       <option value=\"true\"%s>Yes</value>\
@@ -397,11 +397,11 @@ void showConfigScreen(const char* messages) {
 
     snprintf(temp, TEMP_BUFFER_SIZE,
     "<div id=\"staticNetworkInfo\"><div class=\"row\">\
-      IP Address\    
+      IP Address\
       <input class=\"card w-100\" id=\"ipAddress\" type=\"text\" name=\"ipAddress\" value=\"%s\">\
     </div>\
     <div class=\"row\">\
-      Gateway\    
+      Gateway\
       <input class=\"card w-100\" id=\"gateway\" type=\"text\" name=\"gateway\" value=\"%s\">\
     </div>", ip1.toString().c_str(), ip2.toString().c_str());
     server.sendContent(temp);
@@ -410,21 +410,22 @@ void showConfigScreen(const char* messages) {
     IPAddress ip3(settings.subnet), ip4(settings.primaryDNS), ip5(settings.secondaryDNS);
     snprintf(temp, TEMP_BUFFER_SIZE,
     "<div class=\"row\">\
-      Subnet\    
+      Subnet\
       <input class=\"card w-100\" id=\"subnet\" type=\"text\" name=\"subnet\" value=\"%s\">\
     </div>\
     <div class=\"row\">\
-      Primary DNS\    
+      Primary DNS\
       <input class=\"card w-100\" id=\"primaryDNS\" type=\"text\" name=\"primaryDNS\" value=\"%s\">\
-    </div>\   
+    </div>\
     <div class=\"row\">\
-      Secondary DNS\    
+      Secondary DNS\
       <input class=\"card w-100\" id=\"secondaryDNS\" type=\"text\" name=\"secondaryDNS\" value=\"%s\">\
-    </div>\ 
-    </div>\<!--End static network section-->\
+    </div>\
+    </div>\
+    <!--End static network section-->\
     <div class=\"row\">\
       <input class=\"btn\" id=\"btnNetworkUpdate\" type=\"button\" value=\"Update Network Settings\">\
-    </div>\  
+    </div>\
     </form>\
     </div><!--End panel//-->\
     </div><!--End row//-->\
@@ -445,24 +446,24 @@ void showConfigScreen(const char* messages) {
     <input type=\"radio\" id=\"tab1\" name=\"tabs\" checked>\
     <label for=\"tab1\">Primary</label>\
     <input type=\"radio\" id=\"tab2\" name=\"tabs\">\
-    <label for=\"tab2\">Backup</label>\    
+    <label for=\"tab2\">Backup</label>\
     <div class=\"tab-content content1\">\
     <div class=\"row tab-header\">Primary Pool Settings</div>\
     <div class=\"row\">\
-      Mining Pool Server\    
+      Mining Pool Server\
       <input class=\"card w-100\" id=\"poolUrl\" type=\"text\" name=\"poolUrl\" value=\"%s\"> \
     </div>\
     <div class=\"row\">\
-      Mining Pool Port\    
+      Mining Pool Port\
       <input class=\"card w-100\" id=\"poolPort\" type=\"text\" name=\"poolPort\" value=\"%d\">\
     </div>\
     <div class=\"row\">\
-      Mining Pool Password\    
+      Mining Pool Password\
       <input class=\"card w-100\" id=\"poolPassword\" type=\"text\" name=\"poolPassword\" value=\"%s\">\
-    </div>\ 
+    </div>\
     <div class=\"row\">\
-      Wallet Address\ 
-      <div class=\"rel\">\ 
+      Wallet Address\
+      <div class=\"rel\">\
         <input class=\"card w-100\" id=\"wallet\" type=\"text\" name=\"wallet\" value=\"%s\">\
         <input type=\"button\" id=\"btnValidateWallet\" class=\"btn inside-button\" value=\"Validate\">\
       </div>\
@@ -475,20 +476,20 @@ void showConfigScreen(const char* messages) {
     "<div class=\"tab-content content2\">\
     <div class=\"row tab-header\">Backup Pool Settings</div>\
     <div class=\"row\">\
-      Mining Pool Server\    
+      Mining Pool Server\
       <input class=\"card w-100\" id=\"backupPoolUrl\" type=\"text\" name=\"backupPoolUrl\" value=\"%s\"> \
     </div>\
     <div class=\"row\">\
-      Mining Pool Port\    
+      Mining Pool Port\
       <input class=\"card w-100\" id=\"backupPoolPort\" type=\"text\" name=\"backupPoolPort\" value=\"%d\">\
     </div>\
     <div class=\"row\">\
-      Mining Pool Password\    
+      Mining Pool Password\
       <input class=\"card w-100\" id=\"backupPoolPassword\" type=\"text\" name=\"backupPoolPassword\" value=\"%s\">\
-    </div>\ 
+    </div>\
     <div class=\"row\">\
-      Wallet Address\ 
-      <div class=\"rel\">\ 
+      Wallet Address\
+      <div class=\"rel\">\
         <input class=\"card w-100\" id=\"backupWallet\" type=\"text\" name=\"backupWallet\" value=\"%s\">\
         <input type=\"button\" id=\"btnValidateBackupWallet\" class=\"btn inside-button\" value=\"Validate\">\
       </div>\
@@ -509,7 +510,7 @@ void showConfigScreen(const char* messages) {
     // Randomize Timestamps
     snprintf(temp, TEMP_BUFFER_SIZE,
             "<div class=\"row\">\
-      Randomize Block Timestamps\    
+      Randomize Block Timestamps\
       <select class=\"card w-100\" name=\"randomizeTimestamp\" id=\"randomizeTimestamp\">\
       <option value=\"false\"%s>No</value>\
       <option value=\"true\"%s>Yes</value>\
@@ -521,7 +522,7 @@ void showConfigScreen(const char* messages) {
     snprintf(temp, TEMP_BUFFER_SIZE,
             "<div class=\"row\">\
       <input class=\"btn\" id=\"btnMiningUpdate\" type=\"button\" value=\"Update Mining Settings\">\
-    </div>\ 
+    </div>\
     </form>\
     </div><!--End panel//-->\
     </div><!--End row//-->\
@@ -555,7 +556,7 @@ void showConfigScreen(const char* messages) {
 
     snprintf(temp, TEMP_BUFFER_SIZE,
     "<div class=\"row\">\
-      Screen Rotation\    
+      Screen Rotation\
       <select class=\"card w-100\" name=\"screenRotation\" id=\"screenRotation\">\
       <option value=\"0\"%s>Portrait: Cable at bottom</value>\
       <option value=\"1\"%s>Landscape: Cable at right</value>\
@@ -578,14 +579,14 @@ void showConfigScreen(const char* messages) {
 
     snprintf(temp, TEMP_BUFFER_SIZE,
             "<div class=\"row\">\
-      Screen Brightness\    
+      Screen Brightness\
       <select class=\"card w-100\" name=\"screenBrightness\" id=\"screenBrightness\">\
       <option value=\"24\"%s>10%%</option>\
       <option value=\"64\"%s>25%%</option>\
       <option value=\"128\"%s>50%%</option>\
       <option value=\"192\"%s>75%%</option>\
       <option value=\"255\"%s>100%</option>\
-      </select>\    
+      </select>\
     </div>",
             selOptionPtrs[1], selOptionPtrs[2], selOptionPtrs[3], selOptionPtrs[4], selOptionPtrs[5]);
     server.sendContent(temp);
@@ -600,7 +601,7 @@ void showConfigScreen(const char* messages) {
     }
     snprintf(temp, TEMP_BUFFER_SIZE,
             "<div class=\"row\">\
-      Screen Inactivity Timer\    
+      Screen Inactivity Timer\
       <select id=\"inactivityTimer\" class=\"card w-100\" name=\"inactivityTimer\">\
       <option value=\"0\"%s>No timer</option>\
       <option value=\"30000\"%s>30 seconds</option>\
@@ -609,7 +610,7 @@ void showConfigScreen(const char* messages) {
       <option value=\"300000\"%s>5 minutes</option>\
       <option value=\"600000\"%s>10 minutes</option>\
       <option value=\"1800000\"%s>30 minutes</option>\
-      </select>\    
+      </select>\
     </div>",
             selOptionPtrs[0], selOptionPtrs[1], selOptionPtrs[2], selOptionPtrs[3], selOptionPtrs[4], selOptionPtrs[5], selOptionPtrs[6]);
     server.sendContent(temp);
@@ -623,7 +624,7 @@ void showConfigScreen(const char* messages) {
     }
     snprintf(temp, TEMP_BUFFER_SIZE,
             "<div class=\"row\">\
-      Screen Inactivity Brightness\    
+      Screen Inactivity Brightness\
       <select class=\"card w-100\" name=\"inactivityBrightness\" id=\"inactivityBrightness\">\
       <option value=\"0\"%s>Screen off</option>\
       <option value=\"24\"%s>10%%</option>\
@@ -631,7 +632,7 @@ void showConfigScreen(const char* messages) {
       <option value=\"128\"%s>50%%</option>\
       <option value=\"192\"%s>75%%</option>\
       <option value=\"255\"%s>100%</option>\
-      </select>\    
+      </select>\
     </div>",
             selOptionPtrs[0], selOptionPtrs[1], selOptionPtrs[2], selOptionPtrs[3], selOptionPtrs[4], selOptionPtrs[5]);
     server.sendContent(temp);
@@ -661,11 +662,11 @@ void showConfigScreen(const char* messages) {
 
     snprintf(temp, TEMP_BUFFER_SIZE,
             "<div class=\"row\">\
-      Invert Colors\    
+      Invert Colors\
       <select class=\"card w-100\" name=\"invertColors\" id=\"invertColors\">\
       <option value=\"false\"%s>No</option>\
       <option value=\"true\"%s>Yes</option>\
-      </select>\    
+      </select>\
     </div>",
             selOptionPtrs[0], selOptionPtrs[1]);
     server.sendContent(temp);
@@ -674,7 +675,7 @@ void showConfigScreen(const char* messages) {
     snprintf(temp, TEMP_BUFFER_SIZE,
       "<div class=\"row\">\
       <input class=\"btn\" id=\"btnDisplayUpdate\" type=\"button\" value=\"Update Display Settings\">\
-    </div>\  
+    </div>\
     </form>\
     </div><!--End panel//-->\
     </div><!--End row//-->\
@@ -710,7 +711,7 @@ void showConfigScreen(const char* messages) {
     snprintf(temp, TEMP_BUFFER_SIZE,
       "<div class=\"row\">\
       <input class=\"btn\" id=\"btnLEDUpdate\" type=\"button\" value=\"Update LED Settings\">\
-    </div>\  
+    </div>\
     </form>\
     </div><!--End panel//-->\
     </div><!--End row//-->\
@@ -789,7 +790,7 @@ void showConfigScreen(const char* messages) {
     sprintf(temp, 
       "<div class=\"row\">\
       <input class=\"btn\" id=\"btnGeneralUpdate\" type=\"button\" value=\"Update General Settings\">\
-      </div>\  
+      </div>\
       </form>\
       </div><!--End panel//-->\
       </div><!--End row//-->\
@@ -819,7 +820,7 @@ void showConfigScreen(const char* messages) {
 
     snprintf(temp, TEMP_BUFFER_SIZE,
             "<div class=\"row\">\
-      Reduce Mining CPU Load\    
+      Reduce Mining CPU Load\
       <select class=\"card w-100\" name=\"coreZeroDisabled\" id=\"coreZeroDisabled\">\
       <option value=\"false\"%s>No</value>\
       <option value=\"true\"%s>Yes</value>\
@@ -833,7 +834,7 @@ void showConfigScreen(const char* messages) {
 
     snprintf(temp, TEMP_BUFFER_SIZE,
       "<div class=\"row\">\
-      Clear Statistics\    
+      Clear Statistics\
       <input type=\"text\" maxlength=\"4\" class=\"card w-100\" name=\"clearStats\" id=\"clearStats\">\
     </div>\
     <div class=\"row hint\">\
@@ -851,7 +852,7 @@ void showConfigScreen(const char* messages) {
 
     snprintf(temp, TEMP_BUFFER_SIZE,
             "<div class=\"row\">\
-      Enable Log Viewer\    
+      Enable Log Viewer\
       <select class=\"card w-100\" name=\"enableLogViewer\" id=\"enableLogViewer\">\
       <option value=\"false\"%s>No</value>\
       <option value=\"true\"%s>Yes</value>\
@@ -867,7 +868,7 @@ void showConfigScreen(const char* messages) {
     sprintf(temp, 
       "<div class=\"row\">\
       <input class=\"btn\" id=\"btnAdvancedUpdate\" type=\"button\" value=\"Update Advanced Settings\">\
-      </div>\  
+      </div>\
       </form>\
       </div><!--End panel//-->\
       </div><!--End row//-->\
