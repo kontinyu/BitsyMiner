@@ -144,6 +144,7 @@ void screenActionHandler(ApplicationMessage* am) {
         xQueueReceive(appMessageQueueHandle, &m, 0);
       }
       refreshDisplay();
+      updateScreenCycle();
     }    
   #endif
 

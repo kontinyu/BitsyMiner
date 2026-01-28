@@ -18,6 +18,8 @@
 
 #ifdef USE_OLED
 #include <U8g2lib.h>
+#include <HTTPClient.h>
+#include <ArduinoJson.h>
 #ifdef USE_OLED_SPI
   #include <SPI.h>
 #else
@@ -37,6 +39,10 @@ extern MonitorData monitorData;
 uint8_t currentScreen = SCREEN_MINING;
 uint8_t currentScreenOrientation = 0;
 
+// Screen cycling variables
+unsigned long lastScreenChangeTime = 0;
+const unsigned long SCREEN_CYCLE_INTERVAL = 300000; // 15 seconds in milliseconds
+
 #ifdef USE_OLED_SPI
 U8G2_SH1106_128X64_NONAME_F_4W_HW_SPI u8g2(U8G2_R0, OLED_CS, OLED_DC, OLED_RST);
 #else
@@ -45,6 +51,158 @@ U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, U8X8_PIN_NONE, OLED_SCL, OLED_
 
 #define OLED_WHITE 1
 #define OLED_BLACK 0
+#define NAME "MesMiner"
+
+///////////////////////////////////////////////////////////////////////////////////////////
+// API Data Variables
+///////////////////////////////////////////////////////////////////////////////////////////
+String apiBtcPrice = "--";
+String apiBlockHeight = "--";
+String apiGlobalHashrate = "--";
+String apiDifficulty = "--";
+double apiDifficultyRaw = 0.0;
+String apiMinerMotivation = "";
+unsigned long lastApiCall = 0;
+bool apiDataFetched = false;
+uint8_t lastLoadedScreen = 0; // Track which screen was last loaded for API fetching
+
+///////////////////////////////////////////////////////////////////////////////////////////
+// Scrolling Text Variables for Screen 4
+///////////////////////////////////////////////////////////////////////////////////////////
+unsigned long lastScrollTime = 0;
+int scrollOffset = 0;
+const int scrollSpeed = 50; // milliseconds between scroll updates
+
+///////////////////////////////////////////////////////////////////////////////////////////
+// Fetch API data from kontinyu server
+///////////////////////////////////////////////////////////////////////////////////////////
+void fetchKontinyuAPI() {
+  if (WiFi.status() != WL_CONNECTED) return;
+  
+  // Only fetch once per 30 minutes
+  if (millis() - lastApiCall < 30 * 60 * 1000 && apiDataFetched) return;
+  
+  HTTPClient http;
+  http.setTimeout(5000);
+  http.begin("http://miner.kontinyu.com/api.php");
+  
+  int httpCode = http.GET();
+  if (httpCode == HTTP_CODE_OK) {
+    String payload = http.getString();
+    StaticJsonDocument<512> doc;
+    
+    if (deserializeJson(doc, payload) == DeserializationError::Ok) {
+      if (doc.containsKey("btcPrice")) {
+        apiBtcPrice = doc["btcPrice"].as<String>();
+      }
+      if (doc.containsKey("blockHeight")) {
+        apiBlockHeight = doc["blockHeight"].as<String>();
+      }
+      if (doc.containsKey("globalHashrate")) {
+        apiGlobalHashrate = doc["globalHashrate"].as<String>();
+      }
+      if (doc.containsKey("difficulty")) {
+        apiDifficulty = doc["difficulty"].as<String>();
+      }
+      if (doc.containsKey("difficultyRaw")) {
+        apiDifficultyRaw = doc["difficultyRaw"].as<double>();
+      }
+      if (doc.containsKey("minermotivation")) {
+        apiMinerMotivation = doc["minermotivation"].as<String>();
+      }
+      apiDataFetched = true;
+      lastApiCall = millis();
+    }
+    doc.clear();
+  }
+  http.end();
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////
+// Format luck odds with appropriate scale (Sx, Qi, Q, T, B, M, etc.)
+///////////////////////////////////////////////////////////////////////////////////////////
+String formatLuckOdds(double odds) {
+  if (odds >= 1e21) {
+    double sextillions = odds / 1e21;
+    return String((long)sextillions) + "Sx";
+  } else if (odds >= 1e18) {
+    double quintillions = odds / 1e18;
+    return String((long)quintillions) + "Qi";
+  } else if (odds >= 1e15) {
+    double quadrillions = odds / 1e15;
+    return String((long)quadrillions) + "Q";
+  } else if (odds >= 1e12) {
+    double trillions = odds / 1e12;
+    return String((long)trillions) + "T";
+  } else if (odds >= 1e9) {
+    double billions = odds / 1e9;
+    return String((long)billions) + "B";
+  } else if (odds >= 1e6) {
+    double millions = odds / 1e6;
+    return String((long)millions) + "M";
+  } else {
+    return String((long)odds);
+  }
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////
+// Calculate luck based on API difficulty and best difficulty found
+///////////////////////////////////////////////////////////////////////////////////////////
+String calculateLuck() {
+  String luckNumber = "--";
+  if (apiDataFetched && apiDifficultyRaw > 0) {
+    // Use bestDifficultyStr from monitor data
+    String bestDiffStr = monitorData.bestDifficultyStr;
+    double bestDiff = bestDiffStr.toDouble();
+    if (bestDiff > 0) {
+      double odds = apiDifficultyRaw / bestDiff;
+      luckNumber = formatLuckOdds(odds);
+    }
+  }
+  return luckNumber;
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////
+// Auto-cycle through screens
+///////////////////////////////////////////////////////////////////////////////////////////
+void updateScreenCycle() {
+  // Only cycle if NOT on access point screen
+  if (currentScreen == SCREEN_ACCESS_POINT) {
+    lastScreenChangeTime = millis(); // Reset timer when on AP screen
+    return;
+  }
+  
+  unsigned long currentTime = millis();
+  if (currentTime - lastScreenChangeTime >= SCREEN_CYCLE_INTERVAL) {
+    // Time to cycle to next screen
+    uint8_t nextScreen;
+    
+    // Cycle through: SCREEN_MINING(1) -> 3 -> 4 -> 5 -> 6 -> SCREEN_MINING(1)
+    switch (currentScreen) {
+      case SCREEN_MINING:
+        nextScreen = 3;
+        break;
+      case 3:
+        nextScreen = 4;
+        break;
+      case 4:
+        nextScreen = 5;
+        break;
+      case 5:
+        nextScreen = 6;
+        break;
+      case 6:
+        nextScreen = SCREEN_MINING;
+        break;
+      default:
+        nextScreen = SCREEN_MINING;
+        break;
+    }
+    
+    setCurrentScreen(nextScreen);
+    lastScreenChangeTime = currentTime;
+  }
+}
 
 ///////////////////////////////////////////////////////////////////////////////////////////
 // Initialize OLED display
@@ -76,22 +234,20 @@ void refreshOLEDMiningScreen() {
   u8g2.clearBuffer();
   
   // "Qminer" title
-  u8g2.setFont(u8g2_font_helvB08_tr);
-  u8g2.drawStr(0, 12, "Qminer");
+  u8g2.setFont(u8g2_font_sirclive_tr);
+  u8g2.drawStr(0, 12, NAME);
   
-  // "KH/s" label
-  u8g2.drawStr(92, 12, "KH/s");
+  u8g2.setFont(u8g2_font_profont12_tr);
+  u8g2.drawStr(102, 13, "KH/s");
   
   // Line
   u8g2.drawLine(0, 16, 127, 16);
   
   // Hashrate
-  u8g2.setFont(u8g2_font_helvB14_tr);
-  u8g2.setCursor(5, 36);
-  u8g2.print(monitorData.hashesPerSecondStr);
+  u8g2.setFont(u8g2_font_7_Seg_41x21_mn); // Classic digital display look
+  u8g2.drawStr(5, 20, monitorData.hashesPerSecondStr);
   
-  // Stats
-  u8g2.setFont(u8g2_font_6x10_tf);
+/*
   u8g2.setCursor(0, 58);
   u8g2.print("Blks: ");
   u8g2.print(monitorData.validBlocksFoundStr);
@@ -101,7 +257,7 @@ void refreshOLEDMiningScreen() {
   } else {
     u8g2.print("IDLE");
   }
-  
+  */
   u8g2.sendBuffer();
 
 }
@@ -127,6 +283,207 @@ void refreshOLEDAccessPointScreen() {
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////
+// OLED Alternate Screen 2
+///////////////////////////////////////////////////////////////////////////////////////////
+void refreshOLEDScreen2() {
+  u8g2.clearBuffer();
+
+  // "Qminer" title
+  u8g2.setFont(u8g2_font_sirclive_tr);
+  u8g2.drawStr(0, 12, NAME);
+  
+  u8g2.setFont(u8g2_font_profont12_tr);
+  u8g2.drawStr(88, 13, monitorData.hashesPerSecondStr);
+  
+  // Line
+  u8g2.drawLine(0, 16, 127, 16);
+
+  u8g2.setFont(u8g2_font_7_Seg_41x21_mn);
+  
+  char timeStr[6];
+  Date d;
+  dateFromEpoch(&d, monitorData.currentTime + settings.utcOffset);
+  int hour = d.hour;
+  if (!settings.clock24) {
+    hour = (hour % 12) ? (hour % 12) : 12;
+  }
+  sprintf(timeStr, "%02d:%02d", hour, d.minute);
+  u8g2.drawStr(14, 20, timeStr);
+  
+  
+  u8g2.sendBuffer();
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////
+// OLED Alternate Screen 3 - Luck Calculator
+///////////////////////////////////////////////////////////////////////////////////////////
+void refreshOLEDScreen3() {
+  u8g2.clearBuffer();
+  
+  u8g2.setFont(u8g2_font_sirclive_tr);
+  u8g2.drawStr(0, 12, NAME);
+  
+  u8g2.setFont(u8g2_font_profont12_tr);
+  u8g2.drawStr(88, 13, monitorData.hashesPerSecondStr);
+  
+  // Line
+  u8g2.drawLine(0, 16, 127, 16);
+  
+  // Calculate luck
+  String luck = calculateLuck();
+  
+  u8g2.setFont(u8g2_font_helvB12_tf);
+  
+  // Line 1: "1 in" - centered
+  int line1Width = u8g2.getStrWidth("1 in");
+  int line1X = (128 - line1Width) / 2;
+  u8g2.drawStr(line1X, 35, "1 in");
+   u8g2.setFont(u8g2_font_helvB18_tf);
+  // Line 2: luck number - centered
+  int line2Width = u8g2.getStrWidth(luck.c_str());
+  int line2X = (128 - line2Width) / 2;
+  u8g2.drawStr(line2X, 63, luck.c_str());
+  u8g2.sendBuffer();
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////
+// OLED Alternate Screen 4 - Scrolling Miner Motivation
+///////////////////////////////////////////////////////////////////////////////////////////
+void refreshOLEDScreen4() {
+  u8g2.clearBuffer();
+  
+  u8g2.setFont(u8g2_font_sirclive_tr);
+  u8g2.drawStr(0, 12, NAME);
+  
+  u8g2.setFont(u8g2_font_profont12_tr);
+  u8g2.drawStr(88, 13, monitorData.hashesPerSecondStr);
+  
+  // Line
+  u8g2.drawLine(0, 16, 127, 16);
+  
+  // Set clipping to blue region only (hide text that scrolls into yellow region)
+  u8g2.setClipWindow(0, 16, 127, 63);
+  
+  // Display miner motivation quote with vertical scrolling
+  u8g2.setFont(u8g2_font_6x10_tf);
+  
+  // Get motivation quote
+  String quote = apiMinerMotivation;
+  if (quote.length() == 0) {
+    quote = "Keep mining!";
+  }
+  
+  // Remove all newlines - we'll do our own word wrapping
+  quote.replace("\\n", " ");
+  quote.replace("\n", " ");
+  quote.trim();
+  
+  int lineHeight = 12;
+  int blueRegionTop = 26; // Start of blue region
+  int blueRegionBottom = 64; // End of display
+  int blueRegionHeight = blueRegionBottom - blueRegionTop; // 38 pixels
+  int maxWidth = 118; // Max width for text (128 - margins)
+  
+  // Build wrapped lines array with word wrapping by pixel width
+  String wrappedLines[50]; // Max 50 lines
+  int lineCount = 0;
+  
+  // Word wrap the entire quote
+  String currentLine = "";
+  int wordStart = 0;
+  
+  for (int i = 0; i <= quote.length(); i++) {
+    if (i == quote.length() || quote.charAt(i) == ' ') {
+      String word = quote.substring(wordStart, i);
+      word.trim();
+      
+      if (word.length() == 0) {
+        wordStart = i + 1;
+        continue;
+      }
+      
+      String testLine = currentLine.length() > 0 ? currentLine + " " + word : word;
+      
+      if (u8g2.getStrWidth(testLine.c_str()) <= maxWidth) {
+        currentLine = testLine;
+      } else {
+        // Current line is full, save it and start new line with this word
+        if (currentLine.length() > 0) {
+          wrappedLines[lineCount++] = currentLine;
+        }
+        currentLine = word;
+      }
+      
+      wordStart = i + 1;
+      
+      if (lineCount >= 50) break;
+    }
+  }
+  
+  // Add remaining line
+  if (currentLine.length() > 0 && lineCount < 50) {
+    wrappedLines[lineCount++] = currentLine;
+  }
+  
+  // Calculate total content height
+  int totalContentHeight = lineCount * lineHeight;
+  
+  // Only enable scrolling if we have 3+ lines
+  bool shouldScroll = (lineCount > 3);
+  
+  // Update scroll offset (smooth pixel-by-pixel scrolling) - only if scrolling
+  if (shouldScroll && (millis() - lastScrollTime > scrollSpeed)) {
+    scrollOffset++; // Scroll 1 pixel per update
+    lastScrollTime = millis();
+    
+    // Reset scroll when we've scrolled past all content (with padding for full scroll off)
+    if (scrollOffset > totalContentHeight + blueRegionHeight) {
+      scrollOffset = -blueRegionHeight; // Start off-screen above so first line scrolls in
+      delay(2000); // Pause at the top before restarting
+    }
+  } else if (!shouldScroll) {
+    // No scrolling - reset offset to show content from top
+    scrollOffset = 0;
+  }
+  
+  // Draw wrapped lines with scroll offset
+  for (int i = 0; i < lineCount; i++) {
+    int yPos = blueRegionTop + (i * lineHeight) - scrollOffset;
+    
+    // Draw if in visible range (clipping handles the rest)
+    // Use >= instead of > to show first line at the boundary
+    if (yPos >= blueRegionTop - lineHeight && yPos <= blueRegionBottom && wrappedLines[i].length() > 0) {
+      u8g2.drawStr(5, yPos, wrappedLines[i].c_str());
+    }
+  }
+  
+  // Remove clipping
+  u8g2.setMaxClipWindow();
+  
+  u8g2.sendBuffer();
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////
+// OLED Alternate Screen 5
+///////////////////////////////////////////////////////////////////////////////////////////
+/*void refreshOLEDScreen5() {
+  u8g2.clearBuffer();
+  
+  // Add your screen 5 content here
+  // "Qminer" title
+  u8g2.setFont(u8g2_font_sirclive_tr);
+  u8g2.drawStr(0, 12, NAME);
+  
+  u8g2.setFont(u8g2_font_profont12_tr);
+  u8g2.drawStr(85, 13, monitorData.hashesPerSecondStr);
+  
+  // Line
+  u8g2.drawLine(0, 16, 127, 16);
+  
+  u8g2.sendBuffer();
+}*/
+
+///////////////////////////////////////////////////////////////////////////////////////////
 // Refresh the current screen
 ///////////////////////////////////////////////////////////////////////////////////////////
 void refreshDisplay() {
@@ -137,6 +494,18 @@ void refreshDisplay() {
     case SCREEN_ACCESS_POINT:
       refreshOLEDAccessPointScreen();
       break;
+    case 3:
+      refreshOLEDScreen2();
+      break;
+    case 4:
+      refreshOLEDScreen3();
+      break;
+    case 5:
+      refreshOLEDScreen4();
+      break;
+    /*case 6:
+      refreshOLEDScreen5();
+      break;*/
     default:
       refreshOLEDMiningScreen();
       break;
@@ -155,7 +524,18 @@ void redraw() {
 // Set the current screen
 ///////////////////////////////////////////////////////////////////////////////////////////
 void setCurrentScreen(uint8_t screen) {
+  // Check if this is a new screen load (not just a refresh)
+  if (screen != lastLoadedScreen) {
+    lastLoadedScreen = screen;
+    
+    // Fetch API data when loading screens 3, 4, or 5
+    if (screen == 3 || screen == 4 || screen == 5) {
+      fetchKontinyuAPI();
+    }
+  }
+  
   currentScreen = screen;
+  lastScreenChangeTime = millis(); // Reset cycle timer when screen is manually set
   redraw();
 }
 

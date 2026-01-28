@@ -34,6 +34,7 @@ void setCurrentScreen(uint8_t screen);
 void setRotation(uint8_t rotation);
 void redraw();
 void handleScreenTouch();
+void updateScreenCycle();
 
 #endif
 
