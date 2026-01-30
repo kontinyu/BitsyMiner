@@ -15,7 +15,7 @@
 #ifndef DEFINES_N_TYPES_H
 #define DEFINES_N_TYPES_H
 
-#define MINING_HARDWARE_NAME "BitsyMinerOpen"
+#define MINING_HARDWARE_NAME "QMiner"
 #define MINING_HARDWARE_VERSION_HEX 0x010100  // One byte each - X.X.X
 
 #define BYTESWAP32(z) ((uint32_t)((z&0xFF)<<24|((z>>8)&0xFF)<<16|((z>>16)&0xFF)<<8|((z>>24)&0xFF)))
@@ -45,7 +45,7 @@
 #endif
 
 
-#define AP_SSID "MesMiner_"
+#define AP_SSID "QMiner_"
 #define AP_SSID_PASSWORD "12345678"
 
 #define FACTORY_RESET_BUTTON_TIME 10000
@@ -165,9 +165,7 @@
 #define NTP_PACKET_SIZE 40
 
 #define WIFI_RECONNECT_TIME 10000
-
-
-#define EEPROM_SIZE sizeof(EepromSetupData)
+#define WIFI_FAILURE_TIMEOUT 60000  // 1 minute before entering AP mode
 
 
 

@@ -42,6 +42,7 @@ extern QueueHandle_t appMessageQueueHandle;
 uint32_t lastScreenTouch = millis();
 uint32_t lastDataSave = millis(); 
 uint32_t lastWifiReconnect = millis();  // Last time we attempted to reconnect
+uint32_t wifiFailureStartTime = 0;    // When WiFi failure started (0 = not failing)
 
 
 WiFiUDP udp;
@@ -265,6 +266,23 @@ void eventTask(void *task_id) {
       dbg("Reconnecting WiFi...");
       MyWiFi::enterStationMode();
       lastWifiReconnect = millis();
+      
+      // Track when failure started
+      if( wifiFailureStartTime == 0 ) {
+        wifiFailureStartTime = millis();
+      }
+      
+      // If failed for too long, enter AP mode for alternative config
+      if( millis() - wifiFailureStartTime > WIFI_FAILURE_TIMEOUT ) {
+        dbg("WiFi connection failed for 1 minute, entering AP mode for alternative config...");
+        turnOnAccessPoint();
+        wifiFailureStartTime = 0;  // Reset failure timer
+      }
+    }
+
+    // Reset failure timer when connection is successful
+    if( MyWiFi::isConnected() && wifiFailureStartTime != 0 ) {
+      wifiFailureStartTime = 0;
     }
 
     if( ! timeClientActive && MyWiFi::isConnected() ) {

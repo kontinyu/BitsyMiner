@@ -51,7 +51,7 @@ U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, U8X8_PIN_NONE, OLED_SCL, OLED_
 
 #define OLED_WHITE 1
 #define OLED_BLACK 0
-#define NAME "MesMiner"
+#define NAME "QMiner"
 
 ///////////////////////////////////////////////////////////////////////////////////////////
 // API Data Variables
@@ -72,6 +72,9 @@ uint8_t lastLoadedScreen = 0; // Track which screen was last loaded for API fetc
 unsigned long lastScrollTime = 0;
 int scrollOffset = 0;
 const int scrollSpeed = 50; // milliseconds between scroll updates
+unsigned long screen4LoadTime = 0; // Track when screen 4 was loaded
+const unsigned long SCROLL_START_DELAY = 3000; // 3 second delay before scrolling begins
+bool scrollDelayActive = false; // Flag to track if we're in delay period
 
 ///////////////////////////////////////////////////////////////////////////////////////////
 // Fetch API data from kontinyu server
@@ -79,8 +82,8 @@ const int scrollSpeed = 50; // milliseconds between scroll updates
 void fetchKontinyuAPI() {
   if (WiFi.status() != WL_CONNECTED) return;
   
-  // Only fetch once per 30 minutes
-  if (millis() - lastApiCall < 30 * 60 * 1000 && apiDataFetched) return;
+  // Only fetch if we don't have fresh data (cache for 30 minutes)
+  if (apiDataFetched && (millis() - lastApiCall < 30 * 60 * 1000)) return;
   
   HTTPClient http;
   http.setTimeout(5000);
@@ -111,10 +114,11 @@ void fetchKontinyuAPI() {
         apiMinerMotivation = doc["minermotivation"].as<String>();
       }
       apiDataFetched = true;
-      lastApiCall = millis();
+      lastApiCall = millis(); // Update timestamp on success
     }
     doc.clear();
   }
+  // If fetch fails, don't update lastApiCall - allow retry on next screen load
   http.end();
 }
 
@@ -235,7 +239,7 @@ void refreshOLEDMiningScreen() {
   
   // "Qminer" title
   u8g2.setFont(u8g2_font_sirclive_tr);
-  u8g2.drawStr(0, 12, NAME);
+  u8g2.drawStr(2, 12, NAME);
   
   u8g2.setFont(u8g2_font_profont12_tr);
   u8g2.drawStr(102, 13, "KH/s");
@@ -245,7 +249,7 @@ void refreshOLEDMiningScreen() {
   
   // Hashrate
   u8g2.setFont(u8g2_font_7_Seg_41x21_mn); // Classic digital display look
-  u8g2.drawStr(5, 20, monitorData.hashesPerSecondStr);
+  u8g2.drawStr(2, 20, monitorData.hashesPerSecondStr);
   
 /*
   u8g2.setCursor(0, 58);
@@ -290,7 +294,7 @@ void refreshOLEDScreen2() {
 
   // "Qminer" title
   u8g2.setFont(u8g2_font_sirclive_tr);
-  u8g2.drawStr(0, 12, NAME);
+  u8g2.drawStr(2, 12, NAME);
   
   u8g2.setFont(u8g2_font_profont12_tr);
   u8g2.drawStr(88, 13, monitorData.hashesPerSecondStr);
@@ -308,7 +312,7 @@ void refreshOLEDScreen2() {
     hour = (hour % 12) ? (hour % 12) : 12;
   }
   sprintf(timeStr, "%02d:%02d", hour, d.minute);
-  u8g2.drawStr(14, 20, timeStr);
+  u8g2.drawStr(10, 20, timeStr);
   
   
   u8g2.sendBuffer();
@@ -342,7 +346,7 @@ void refreshOLEDScreen3() {
   // Line 2: luck number - centered
   int line2Width = u8g2.getStrWidth(luck.c_str());
   int line2X = (128 - line2Width) / 2;
-  u8g2.drawStr(line2X, 63, luck.c_str());
+  u8g2.drawStr(line2X, 58, luck.c_str());
   u8g2.sendBuffer();
 }
 
@@ -353,7 +357,7 @@ void refreshOLEDScreen4() {
   u8g2.clearBuffer();
   
   u8g2.setFont(u8g2_font_sirclive_tr);
-  u8g2.drawStr(0, 12, NAME);
+  u8g2.drawStr(2, 12, NAME);
   
   u8g2.setFont(u8g2_font_profont12_tr);
   u8g2.drawStr(88, 13, monitorData.hashesPerSecondStr);
@@ -362,7 +366,7 @@ void refreshOLEDScreen4() {
   u8g2.drawLine(0, 16, 127, 16);
   
   // Set clipping to blue region only (hide text that scrolls into yellow region)
-  u8g2.setClipWindow(0, 16, 127, 63);
+  u8g2.setClipWindow(0, 17, 127, 63);
   
   // Display miner motivation quote with vertical scrolling
   u8g2.setFont(u8g2_font_6x10_tf);
@@ -431,15 +435,32 @@ void refreshOLEDScreen4() {
   // Only enable scrolling if we have 3+ lines
   bool shouldScroll = (lineCount > 3);
   
-  // Update scroll offset (smooth pixel-by-pixel scrolling) - only if scrolling
-  if (shouldScroll && (millis() - lastScrollTime > scrollSpeed)) {
-    scrollOffset++; // Scroll 1 pixel per update
+  // Track screen load time on first load
+  if (screen4LoadTime == 0) {
+    screen4LoadTime = millis();
+    scrollOffset = 0; // Ensure we start at top
     lastScrollTime = millis();
-    
-    // Reset scroll when we've scrolled past all content (with padding for full scroll off)
-    if (scrollOffset > totalContentHeight + blueRegionHeight) {
-      scrollOffset = -blueRegionHeight; // Start off-screen above so first line scrolls in
-      delay(2000); // Pause at the top before restarting
+    scrollDelayActive = true; // Start with delay active
+  }
+  
+  // Check if delay period has ended
+  if (scrollDelayActive && (millis() - screen4LoadTime >= SCROLL_START_DELAY)) {
+    scrollDelayActive = false; // Delay is over, allow scrolling
+  }
+  
+  // Update scroll offset (smooth pixel-by-pixel scrolling) - only if scrolling and delay has passed
+  if (shouldScroll && !scrollDelayActive && (millis() - lastScrollTime > scrollSpeed)) {
+    int maxScrollOffset = totalContentHeight - blueRegionHeight;
+
+    if (scrollOffset < maxScrollOffset) {
+      scrollOffset+=6; // Scroll 6 pixels per update
+      lastScrollTime = millis();
+    } else {
+      delay(2000); // Wait for 2 seconds
+      scrollOffset = 0; // Restart from top
+      screen4LoadTime = millis(); // Reset load time to restart delay
+      scrollDelayActive = true; // Activate delay again
+      lastScrollTime = millis();
     }
   } else if (!shouldScroll) {
     // No scrolling - reset offset to show content from top
@@ -466,22 +487,33 @@ void refreshOLEDScreen4() {
 ///////////////////////////////////////////////////////////////////////////////////////////
 // OLED Alternate Screen 5
 ///////////////////////////////////////////////////////////////////////////////////////////
-/*void refreshOLEDScreen5() {
+void refreshOLEDScreen5() {
   u8g2.clearBuffer();
   
-  // Add your screen 5 content here
-  // "Qminer" title
+  // Header
   u8g2.setFont(u8g2_font_sirclive_tr);
-  u8g2.drawStr(0, 12, NAME);
+  u8g2.drawStr(2, 12, NAME);
   
+  // small status on right of header
   u8g2.setFont(u8g2_font_profont12_tr);
   u8g2.drawStr(85, 13, monitorData.hashesPerSecondStr);
-  
-  // Line
+
+  // Separator line
   u8g2.drawLine(0, 16, 127, 16);
-  
+
+  // Large centered blocks found number
+  String blocksStr = String(monitorData.validBlocksFoundStr);
+  u8g2.setFont(u8g2_font_freedoomr25_mn);
+  u8g2.drawStr(20, 47, blocksStr.c_str());
+
+  // Small caption below
+  String caption = "blocks found";
+  u8g2.setFont(u8g2_font_6x10_tf);
+  int capW = u8g2.getStrWidth(caption.c_str());
+  u8g2.drawStr(30, 55, caption.c_str());
+
   u8g2.sendBuffer();
-}*/
+}
 
 ///////////////////////////////////////////////////////////////////////////////////////////
 // Refresh the current screen
@@ -503,9 +535,9 @@ void refreshDisplay() {
     case 5:
       refreshOLEDScreen4();
       break;
-    /*case 6:
+    case 6:
       refreshOLEDScreen5();
-      break;*/
+      break;
     default:
       refreshOLEDMiningScreen();
       break;
@@ -531,6 +563,13 @@ void setCurrentScreen(uint8_t screen) {
     // Fetch API data when loading screens 3, 4, or 5
     if (screen == 3 || screen == 4 || screen == 5) {
       fetchKontinyuAPI();
+    }
+    
+    // Reset scroll state when loading screen 5 (which is screen 4 content - scrolling motivation)
+    if (screen == 5) {
+      screen4LoadTime = 0; // Reset load time to trigger delay on next refresh
+      scrollOffset = 0; // Reset scroll position
+      scrollDelayActive = false; // Reset delay flag
     }
   }
   
