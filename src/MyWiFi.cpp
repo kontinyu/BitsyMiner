@@ -24,6 +24,7 @@ char MyWiFi::theSSIDPassword[MAX_PASSWORD_LENGTH] = "";
 char MyWiFi::apSSID[MAX_SSID_LENGTH] = "";
 char MyWiFi::apPassword[MAX_PASSWORD_LENGTH] = "";
 MyWiFiEventCallback MyWiFi::ipCallback = NULL;
+static bool everConnected = false;
 
 
 
@@ -66,6 +67,8 @@ void MyWiFi::handleWiFiEvent(WiFiEvent_t event, WiFiEventInfo_t info) {
       if( ipCallback ) {
         ipCallback();
       }
+      // Mark that we've successfully connected at least once this boot
+      everConnected = true;
       break;
     case WiFiEvent_t::ARDUINO_EVENT_WIFI_STA_DISCONNECTED:
       dbg("WiFi lost connection.\n");
@@ -177,5 +180,9 @@ IPAddress MyWiFi::getIP() {
     s = WiFi.localIP();
   }
   return s;
+}
+
+bool MyWiFi::hasEverConnected() {
+  return everConnected;
 }
 

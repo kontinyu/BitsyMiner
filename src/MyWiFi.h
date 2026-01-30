@@ -39,6 +39,7 @@ class MyWiFi {
     static void configure(uint32_t ipAddress, uint32_t gatewayAddress, uint32_t subnetAddress, uint32_t primaryDNSAddress, uint32_t secondaryDNSAddress);
     static void setupEvents();
     static void setIPCallback(MyWiFiEventCallback callback);
+    static bool hasEverConnected();
 
     static int16_t apClientCount();
 

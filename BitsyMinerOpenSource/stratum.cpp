@@ -493,6 +493,12 @@ void stratumTask(void *task_id) {
         dbg("Connection failed.\n");
 
         addToWebLog(infoMessageColor, "Pool connection failed.");
+        
+        // Mark first attempt time if not already set
+        if( lastPoolConnectTime == 0 ) {
+          lastPoolConnectTime = millis();
+        }
+        
         vTaskDelay(10000 / portTICK_PERIOD_MS);
 
         // See if it's time to try the backup
@@ -561,7 +567,7 @@ void stratumTask(void *task_id) {
 
     // If we're here, we're connected to a pool
     monitorData.poolConnected = true;
-    lastPoolConnectTime = millis();
+    lastPoolConnectTime = millis();  // Reset timer on successful connection
 
     // Handle any incoming messages
     while( client.available() > 0 ) {

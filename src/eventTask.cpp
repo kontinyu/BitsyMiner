@@ -274,9 +274,15 @@ void eventTask(void *task_id) {
       
       // If failed for too long, enter AP mode for alternative config
       if( millis() - wifiFailureStartTime > WIFI_FAILURE_TIMEOUT ) {
-        dbg("WiFi connection failed for 1 minute, entering AP mode for alternative config...");
-        turnOnAccessPoint();
-        wifiFailureStartTime = 0;  // Reset failure timer
+        // Only enter AP mode automatically if we've never successfully connected
+        if( ! MyWiFi::hasEverConnected() ) {
+          dbg("WiFi connection failed for 1 minute, never connected before; entering AP mode for alternative config...");
+          turnOnAccessPoint();
+          wifiFailureStartTime = 0;  // Reset failure timer after entering AP mode
+        } else {
+          dbg("WiFi connection failed for 1 minute, but previously connected; keep retrying, not entering AP mode.");
+          // Keep wifiFailureStartTime running - don't reset it, so we only log this message once
+        }
       }
     }
 
